@@ -8,4 +8,4 @@ In my case, there are 30 modules with different functionality, most of them are 
 
 I published it because there are a lot of small closed groups of players playing on samp role servers, which could use a similar modular script that can be built on the example of edith-pub.
 # Links
-More info **[here]()** (in Russian).
+More info **[here](https://www.blast.hk/threads/117550/)** (in Russian).
