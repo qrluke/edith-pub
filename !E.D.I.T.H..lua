@@ -8603,7 +8603,7 @@ function deathListModule()
   end
 
   local description = function()
-    return "{7ef3fa}* " .. (settings.deathlist.enable and "{00ff66}" or "{ff0000}") .. "DEATHLIST - {ffffff}Локальный молваясный киллист и онлайн-топ по убийстам, смертям, урона и деморгану."
+    return "{7ef3fa}* " .. (settings.deathlist.enable and "{00ff66}" or "{ff0000}") .. "DEATHLIST - {ffffff}Локальный киллист и онлайн-топ по убийстам, смертям, урона и деморгану."
   end
 
   local enableAll = function()
