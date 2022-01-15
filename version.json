@@ -1,0 +1,5 @@
+{
+  "latest": "actual_version",
+  "updateurl": "direct_link_to_lua_or_luac",
+  "changelog": "changelog_url"
+}
