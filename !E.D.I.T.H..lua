@@ -278,6 +278,7 @@ function main()
   local down_res = false
   local f = 0
   local info = 0
+  local text = 0
   local res_path = 0
   local request_table_final = 0
   local handler = 0
@@ -338,7 +339,8 @@ function main()
     if down_res and doesFileExist(res_path) then
       f = io.open(res_path, "r")
       if f then
-        info = decodeJson(f:read("*a"))
+        text = f:read("*a")
+        info = decodeJson(text)
         if info ~= nil then
           glonass.process(info)
 
