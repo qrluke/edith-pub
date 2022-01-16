@@ -28,6 +28,76 @@ local secrets = inicfg.load({ passwords = {} }, "edith.secrets")
 
 local transponder_delay = 150
 
+--------------------------------------------------------------------------------
+------------------------------------ANTIDUP-------------------------------------
+--------------------------------------------------------------------------------
+local do_not_reload = false
+local first_instance_id = -1
+for id = 1, 1000 do
+  local s = script.get(id)
+  if s then
+    if s.name == thisScript().name and s.dead == false then
+      if first_instance_id == -1 then
+        first_instance_id = s.id
+      end
+    end
+  end
+end
+
+if first_instance_id == -1 then
+  first_instance_id = thisScript().id
+end
+
+local force_unload = false
+if first_instance_id ~= thisScript().id then
+  force_unload = true
+end
+
+function onScriptTerminate(LuaScript, quitGame)
+  if LuaScript == thisScript() then
+    if not quitGame then
+      if first_instance_id == thisScript().id then
+        if settings.test.reloadonterminate then
+          if do_not_reload or isKeyDown(VK_R) then
+            if isSampAvailable() and isSampfuncsLoaded() then
+
+              if settings.welcome.show then
+                sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена ОЖИДАЕМО. {7ef3fa}Перезапуск не требуется. CTRL+R - если надо перезапустить и стоит reload all", 0xff0000)
+              end
+            end
+          else
+            if isSampAvailable() and isSampfuncsLoaded() then
+              sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Перезапуск скрипта запущен из-за настроек. Держите {7ef3fa}R{ff0000}, чтобы отменить.", 0xff0000)
+
+              if settings.welcome.show then
+                sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена, возможно с ошибкой. {7ef3fa}В настройках включен автоперезапуск, пробуем запустить..", 0xff0000)
+              end
+            end
+            script.load(thisScript().path)
+          end
+        else
+          if isSampAvailable() and isSampfuncsLoaded() then
+            if settings.welcome.show then
+              sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена, возможно с ошибкой. {7ef3fa}CTRL + R - перезапустить, если стоит скрипт reload all", 0xff0000)
+            end
+          end
+        end
+        local sec = tonumber(os.clock() + 0.1);
+        while (os.clock() < sec) do
+        end
+      else
+        if isSampAvailable() and isSampfuncsLoaded() then
+          if settings.welcome.show then
+            sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Обнаружен лишний экземпляр скрипта. {7ef3fa}Выгружаюсь...", 0xff0000)
+          end
+        end
+      end
+    end
+  end
+end
+--------------------------------------------------------------------------------
+--------------------------------------MAIN--------------------------------------
+--------------------------------------------------------------------------------
 function main()
   if not isSampfuncsLoaded() or not isSampLoaded() then
     return
@@ -9385,73 +9455,6 @@ function enableEvents()
   sampev.onGangZoneFlash = onGangZoneFlash
   sampev.onGangZoneStopFlash = onGangZoneStopFlash
   sampev.onTextDrawHide = onTextDrawHide
-end
---------------------------------------------------------------------------------
-------------------------------------ANTIDUP-------------------------------------
---------------------------------------------------------------------------------
-local do_not_reload = false
-local first_instance_id = -1
-for id = 1, 1000 do
-  local s = script.get(id)
-  if s then
-    if s.name == thisScript().name and s.dead == false then
-      if first_instance_id == -1 then
-        first_instance_id = s.id
-      end
-    end
-  end
-end
-
-if first_instance_id == -1 then
-  first_instance_id = thisScript().id
-end
-
-local force_unload = false
-if first_instance_id ~= thisScript().id then
-  force_unload = true
-end
-
-function onScriptTerminate(LuaScript, quitGame)
-  if LuaScript == thisScript() then
-    if not quitGame then
-      if first_instance_id == thisScript().id then
-        if settings.test.reloadonterminate then
-          if do_not_reload or isKeyDown(VK_R) then
-            if isSampAvailable() and isSampfuncsLoaded() then
-
-              if settings.welcome.show then
-                sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена ОЖИДАЕМО. {7ef3fa}Перезапуск не требуется. CTRL+R - если надо перезапустить и стоит reload all", 0xff0000)
-              end
-            end
-          else
-            if isSampAvailable() and isSampfuncsLoaded() then
-              sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Перезапуск скрипта запущен из-за настроек. Держите {7ef3fa}R{ff0000}, чтобы отменить.", 0xff0000)
-
-              if settings.welcome.show then
-                sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена, возможно с ошибкой. {7ef3fa}В настройках включен автоперезапуск, пробуем запустить..", 0xff0000)
-              end
-            end
-            script.load(thisScript().path)
-          end
-        else
-          if isSampAvailable() and isSampfuncsLoaded() then
-            if settings.welcome.show then
-              sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена, возможно с ошибкой. {7ef3fa}CTRL + R - перезапустить, если стоит скрипт reload all", 0xff0000)
-            end
-          end
-        end
-        local sec = tonumber(os.clock() + 0.1);
-        while (os.clock() < sec) do
-        end
-      else
-        if isSampAvailable() and isSampfuncsLoaded() then
-          if settings.welcome.show then
-            sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Обнаружен лишний экземпляр скрипта. {7ef3fa}Выгружаюсь...", 0xff0000)
-          end
-        end
-      end
-    end
-  end
 end
 --------------------------------------------------------------------------------
 -------------------------------------UPDATE-------------------------------------
