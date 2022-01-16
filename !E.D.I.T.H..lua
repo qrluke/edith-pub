@@ -5985,6 +5985,7 @@ function drugsmatsModule()
 
   local gramm = 0
   local X, Y, Height = 0, 0, 0
+  local command, params = 0, 0
 
   local sleep = 0
 
@@ -6491,14 +6492,14 @@ function drugsmatsModule()
 
   local onSendCommand = function(cmd)
     if settings.drugsmats.enable then
-      local command, params = string.match(cmd:lower(), "^%/([^ ]*)(.*)")
+      command, params = string.match(cmd:lower(), "^%/([^ ]*)(.*)")
       if command == ini.global.cmd:lower() or string.find(command, ini[inikeys].server_cmd) then
         if string.find(params, "menu") then
           rubin_drugs_mats_ShowDialog(1)
           return false
         end
         if #params == 0 then
-          local gramm = math.ceil(((ini[inikeys].hp + 1) - getCharHealth(playerPed)) / ini[inikeys].hp_one_gram)
+          gramm = math.ceil(((ini[inikeys].hp + 1) - getCharHealth(playerPed)) / ini[inikeys].hp_one_gram)
           if gramm > ini[inikeys].max_use_gram then
             gramm = ini[inikeys].max_use_gram
           end
