@@ -219,10 +219,6 @@ function main()
     wait(-1)
   end
 
-  while sampGetGamestate() ~= 3 do
-    wait(100)
-  end
-
   local resLoad, events = pcall(require, "lib.samp.events")
   if not resLoad then
     sampAddChatMessage("[EDITH]: У вас нет библиотеки SAMP.Lua.", 0xff0000)
