@@ -6073,9 +6073,9 @@ function drugsmatsModule()
   end
 
   local rubin_drugs_mats_doDialog = function()
-    if not sampIsDialogActive() then
-      return
-    end
+    --if not sampIsDialogActive() then
+    --  return
+    --end
     if sampGetDialogCaption() == 'Drugs-Mats: Настройки' then
       local result, button, list, input = sampHasDialogRespond(0)
       if result and button == 1 then
