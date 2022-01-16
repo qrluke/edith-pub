@@ -629,11 +629,6 @@ async def test(request, exception):
                 answer["timestamp"] = time.time()
                 answer["nicks"] = nicks
                 answer["vehicles"] = vehicles
-            elif info["data"]['request'] == 2:
-                answer["capture"] = capture
-                answer["timestamp"] = time.time()
-                answer["nicks"] = nicks
-                answer["vehicles"] = vehicles
             return json(answer)
             # server.send_message(client, str.encode())
             # print ('Client(%d) said: %s' % (client['id'], message))
