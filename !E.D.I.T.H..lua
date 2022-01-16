@@ -2119,6 +2119,13 @@ function capturetimerModule()
   local wasafk = false
   local sendtype = 0
   local timeleft_type = 0
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
 
   local mainThread = function()
     while true do
@@ -2255,14 +2262,7 @@ function capturetimerModule()
       lua_thread.create(
               function()
                 if settings.capturetimer.enable and settings.capturetimer.clistoff then
-                  if sleep == nil then
-                    sleep = 0
-                  end
-                  repeat
-                    wait(50)
-                    local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                    local ms = math.ceil(os.clock() * 1000 - sleep)
-                  until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+                  antiFlood()
                   sampSendChat("/clist 0")
                 end
               end
@@ -2276,11 +2276,7 @@ function capturetimerModule()
       lua_thread.create(
               function()
                 if settings.capturetimer.enable and settings.capturetimer.clistoff then
-                  repeat
-                    wait(50)
-                    local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                    local ms = math.ceil(os.clock() * 1000 - sleep)
-                  until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+                  antiFlood()
                   sampSendChat("/clist 0")
                 end
               end
@@ -3182,6 +3178,14 @@ function cipherModule()
 
   local inv256
 
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
   local encode = function(str)
     if not inv256 then
       inv256 = {}
@@ -3302,11 +3306,7 @@ function cipherModule()
                       wait(100)
                       local mes = ((i == 1 and "") or "..") .. string.sub(message, ind, ind + 32) .. ((max == i and "") or "..")
                       if mes ~= "" then
-                        repeat
-                          wait(50)
-                          local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                          local ms = math.ceil(os.clock() * 1000 - sleep)
-                        until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+                        antiFlood()
                         sampSendChat(string.format("/f ЕNС: %s", encode(mes)))
                       end
                       ind = ind + 33
@@ -3317,6 +3317,8 @@ function cipherModule()
         end
         sampSendChat(string.format("/f ЕNС: %s", encode(message)))
         return false
+      else
+        sleep = os.clock() * 1000
       end
     end
   end
@@ -3618,6 +3620,14 @@ end
 function struckModule()
   local stop_struck = false
 
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
   local getMenu = function()
     return {
       title = "{7ef3fa}* " .. (settings.struck.enable and "{00ff66}" or "{ff0000}") .. "STRUCK",
@@ -3673,14 +3683,7 @@ function struckModule()
                   end
                   while stop_struck do
                     wait(0)
-                    if sleep == nil then
-                      sleep = 0
-                    end
-                    repeat
-                      wait(50)
-                      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                      local ms = math.ceil(os.clock() * 1000 - sleep)
-                    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+                    antiFlood()
                     sampSendChat("/struck")
                   end
                 end
@@ -4374,6 +4377,12 @@ end
 --------------------------------------------------------------------------------
 function rcaptureModule()
   local auf_count = 0
+  local sleep = 0
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
   local mainThread = function()
     if settings.rcapture.active then
       sampShowDialog(1131231, "автокапт после рестарта", "RCAPTURE был отменен.\nПароль и бизнес стерты.", "Понял")
@@ -4396,14 +4405,7 @@ function rcaptureModule()
       if button == 0 then
         return
       else
-        if sleep == nil then
-          sleep = 0
-        end
-        repeat
-          wait(50)
-          local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-          local ms = math.ceil(os.clock() * 1000 - sleep)
-        until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+        antiFlood()
         sampSendChat("/capture")
         r_sel = true
         while r_sel do
@@ -4514,14 +4516,7 @@ function rcaptureModule()
           while sampGetPlayerScore(id) == 0 do
             wait(0)
           end
-          if sleep == nil then
-            sleep = 0
-          end
-          repeat
-            wait(50)
-            local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-            local ms = math.ceil(os.clock() * 1000 - sleep)
-          until ms > 200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+          antiFlood()
           sampSendChat("/capture")
           wait(300)
           if settings.rcapture.active then
@@ -4557,6 +4552,14 @@ function rcaptureModule()
     end
   end
 
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
@@ -4566,7 +4569,9 @@ function rcaptureModule()
     defaults = defaults,
     onShowDialog = onShowDialog,
     register = register,
-    onSendDialogResponse = onSendDialogResponse
+    onSendDialogResponse = onSendDialogResponse,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -4937,6 +4942,8 @@ function likerModule()
   local like_id = -1
   local liker_active = false
 
+  local sleep = 0
+
   local asodkas, licenseid = sampGetPlayerIdByCharHandle(PLAYER_PED)
   local licensenick = sampGetPlayerNickname(licenseid)
 
@@ -4958,14 +4965,7 @@ function likerModule()
     if settings.rcapture.active then
       wait(200)
     end
-    if sleep == nil then
-      sleep = 0
-    end
-    repeat
-      wait(50)
-      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-      local ms = math.ceil(os.clock() * 1000 - sleep)
-    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+    antiFlood()
     sampSendChat('/like ' .. id)
   end
 
@@ -4973,9 +4973,6 @@ function likerModule()
     if settings.liker[licensenick] == nil then
       settings.liker[licensenick] = 0
       inicfg.save(settings, "edith")
-    end
-    if sleep == nil then
-      sleep = 0
     end
     repeat
       wait(5000)
@@ -5064,6 +5061,10 @@ function likerModule()
     sleep = os.clock() * 1000
   end
 
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
@@ -5073,7 +5074,8 @@ function likerModule()
     defaults = defaults,
     like_nicks = like_nicks,
     onServerMessage = onServerMessage,
-    onSendChat = onSendChat
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -5408,6 +5410,14 @@ function storojModule()
   local st_dg, st_sg, st_smg, st_ak47, st_m4, st_rf, tk_dg, tk_sg, tk_smg, tk_ak47, tk_m4, tk_rf = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
   local check_bonus_storoj = 0
   local bonus_getgun = 1
+
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
 
   local createWkav = function()
     if settings.storoj.enable then
@@ -5927,16 +5937,17 @@ function storojModule()
     if settings.rcapture.active then
       wait(500)
     end
-    if sleep == nil then
-      sleep = 0
-    end
-    repeat
-      wait(50)
-      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-      local ms = math.ceil(os.clock() * 1000 - sleep)
-    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+    antiFlood()
     check_bonus_storoj = 2
     sampSendChat('/boostinfo')
+  end
+
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
   end
 
   return {
@@ -5951,7 +5962,9 @@ function storojModule()
     onServerMessage = onServerMessage,
     defaultsToday = defaultsToday,
     defaultsAll = defaultsAll,
-    checkboost = checkBoostInfo
+    checkboost = checkBoostInfo,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -5973,18 +5986,19 @@ function drugsmatsModule()
   local gramm = 0
   local X, Y, Height = 0, 0, 0
 
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
   local rubin_drugs_mats_GetMats = function()
     if settings.rcapture.active then
       wait(500)
     end
-    if sleep == nil then
-      sleep = 0
-    end
-    repeat
-      wait(50)
-      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-      local ms = math.ceil(os.clock() * 1000 - sleep)
-    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+    antiFlood()
 
     if settings.drugsmats.enable then
       if ini[inikeys].inventory then
@@ -6399,14 +6413,7 @@ function drugsmatsModule()
     if settings.rcapture.active then
       wait(500)
     end
-    if sleep == nil then
-      sleep = 0
-    end
-    repeat
-      wait(50)
-      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-      local ms = math.ceil(os.clock() * 1000 - sleep)
-    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+    antiFlood()
     check_bonus = 2
     sampSendChat('/boostinfo')
   end
@@ -6575,6 +6582,14 @@ function iznankaModule()
   local iznanka_active = false
   local break_timer = os.clock()
 
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
   local mainThread = function()
     while true do
       wait(100)
@@ -6604,14 +6619,7 @@ function iznankaModule()
                             end
                             lua_thread.create(
                                     function()
-                                      if sleep == nil then
-                                        sleep = 0
-                                      end
-                                      repeat
-                                        wait(0)
-                                        local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                                        local ms = math.ceil(os.clock() * 1000 - sleep)
-                                      until ms > 800 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+                                      antiFlood()
                                       sampSendChat("/usedrugs")
                                     end
                             )
@@ -6758,13 +6766,23 @@ function iznankaModule()
     keyS = 32,
   }
 
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
     desc = description,
     enable = enableAll,
     disable = disableAll,
-    defaults = defaults
+    defaults = defaults,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -6779,6 +6797,14 @@ function healmeModule()
   local health = 0
   local result, id = 0, 0
 
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
   local mainThread = function()
     while true do
       wait(100)
@@ -6792,14 +6818,7 @@ function healmeModule()
               if settings.rcapture.active then
                 wait(500)
               end
-              if sleep == nil then
-                sleep = 0
-              end
-              repeat
-                wait(0)
-                local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                local ms = math.ceil(os.clock() * 1000 - sleep)
-              until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+              antiFlood()
               result, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
               health = sampGetPlayerHealth(id)
               if health < 100 then
@@ -6876,6 +6895,14 @@ function healmeModule()
     end
   end
 
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
@@ -6884,7 +6911,9 @@ function healmeModule()
     disable = disableAll,
     defaults = defaults,
     onSetInterior = onSetInterior,
-    onServerMessage = onServerMessage
+    onServerMessage = onServerMessage,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -7014,6 +7043,14 @@ end
 -----------------------------------PARASHUTE------------------------------------
 --------------------------------------------------------------------------------
 function parashuteModule()
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 600 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
   local mainThread = function()
     while true do
       wait(100)
@@ -7038,11 +7075,7 @@ function parashuteModule()
                 wait(1)
                 setVirtualKeyDown(1, false)
               else
-                repeat
-                  wait(50)
-                  local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                  local ms = math.ceil(os.clock() * 1000 - sleep)
-                until ms > 600 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+                antiFlood()
                 sampSendChat("/piss")
                 local break_timer = os.clock()
                 while sampGetPlayerSpecialAction(id1) ~= 68 do
@@ -7153,13 +7186,23 @@ function parashuteModule()
     key = 80
   }
 
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
     desc = description,
     enable = enableAll,
     disable = disableAll,
-    defaults = defaults
+    defaults = defaults,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -7167,6 +7210,14 @@ end
 --------------------------------------------------------------------------------
 function vspiwkaModule()
   local result1, id1 = 0, 0
+
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
 
   local mainThread = function()
     while true do
@@ -7176,11 +7227,7 @@ function vspiwkaModule()
           if not sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() and not isCharInAnyCar(playerPed) then
             result1, id1 = sampGetPlayerIdByCharHandle(playerPed)
             if result1 then
-              repeat
-                wait(50)
-                local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                local ms = math.ceil(os.clock() * 1000 - sleep)
-              until ms > 600 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+              antiFlood()
               sampSendChat("/anim 23")
               wait(200)
             end
@@ -7269,13 +7316,23 @@ function vspiwkaModule()
     key = 82
   }
 
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
     desc = description,
     enable = enableAll,
     disable = disableAll,
-    defaults = defaults
+    defaults = defaults,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -7308,6 +7365,14 @@ function warningsModule()
 
   local removeFromSet = function(set, key)
     set[key] = nil
+  end
+
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local mainThread = function()
@@ -7445,6 +7510,14 @@ function warningsModule()
     end
   end
 
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
+  local onSendCommand = function(cmd)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
@@ -7452,7 +7525,9 @@ function warningsModule()
     enable = enableAll,
     disable = disableAll,
     defaults = defaults,
-    onPlayerDeath = onPlayerDeath
+    onPlayerDeath = onPlayerDeath,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
   }
 end
 --------------------------------------------------------------------------------
@@ -9081,7 +9156,7 @@ function ganghelperModule()
       wait(100)
       if settings.ganghelper.enable then
         if settings.ganghelper.gunkeys then
-          if sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() then
+          if not sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() then
             if wasKeyPressed(settings.ganghelper.keyDeagle) then
               antiFlood()
               sampSendChat("/gun deagle 14")
@@ -9110,7 +9185,7 @@ function ganghelperModule()
             sampShowDialog(
                     0,
                     "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"GANGHELPER"',
-                    "{00ff66}GANGHELPER{ffffff}\nФункции, упрощающие геймплей бандита\n\n1. Автопополнение материалов когда вы на респе и склад открывается.\n2. Хоткеи на оружие :4 - deagle 14, 5 - m4 20, 6 - rifle 10.",
+                    "{00ff66}GANGHELPER{ffffff}\nФункции, упрощающие геймплей бандита\n\n1. Автопополнение материалов когда вы на респе и склад открывается.\n2. Хоткеи на оружие: 4 - deagle 14, 5 - m4 20, 6 - rifle 10.",
                     "Окей"
             )
           end
@@ -9162,9 +9237,9 @@ function ganghelperModule()
     enable = true,
     getguns = true,
     gunkeys = true,
-    gunDeagle = VK_4,
-    gunM4 = VK_5,
-    gunRifle = VK_6
+    keyDeagle = VK_4,
+    keyM4 = VK_5,
+    keyRifle = VK_6
   }
 
   local onServerMessage = function(color, text)
@@ -9376,6 +9451,34 @@ function onSetMapIcon(iconId, position, type, color, style)
 end
 
 function onSendCommand(cmd)
+  local res = processEvent(warnings.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(vspiwka.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(parashute.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(healme.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(iznanka.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(liker.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(storoj.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
   local res = processEvent(cipher.onSendCommand, table.pack(cmd))
   if res then
     return table.unpack(res)
@@ -9388,11 +9491,66 @@ function onSendCommand(cmd)
   if res then
     return table.unpack(res)
   end
+  local res = processEvent(rcapture.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
   local res = processEvent(capturetimer.onSendCommand, table.pack(cmd))
   if res then
     return table.unpack(res)
   end
   local res = processEvent(ganghelper.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+end
+
+function onSendChat(message)
+  local res = processEvent(warnings.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(vspiwka.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(parashute.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(healme.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(iznanka.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(storoj.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(liker.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(struck.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(drugsmats.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(rcapture.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(capturetimer.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(ganghelper.onSendChat, table.pack(message))
   if res then
     return table.unpack(res)
   end
@@ -9499,29 +9657,6 @@ end
 
 function onGangZoneStopFlash(zoneId)
   local res = processEvent(gzcheck.onGangZoneStopFlash, table.pack(zoneId))
-  if res then
-    return table.unpack(res)
-  end
-end
-
-function onSendChat(message)
-  local res = processEvent(liker.onSendChat, table.pack(message))
-  if res then
-    return table.unpack(res)
-  end
-  local res = processEvent(struck.onSendChat, table.pack(message))
-  if res then
-    return table.unpack(res)
-  end
-  local res = processEvent(drugsmats.onSendChat, table.pack(message))
-  if res then
-    return table.unpack(res)
-  end
-  local res = processEvent(capturetimer.onSendChat, table.pack(message))
-  if res then
-    return table.unpack(res)
-  end
-  local res = processEvent(ganghelper.onSendChat, table.pack(message))
   if res then
     return table.unpack(res)
   end
