@@ -9158,15 +9158,15 @@ function ganghelperModule()
       if settings.ganghelper.enable then
         if settings.ganghelper.gunkeys then
           if not sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() then
-            if wasKeyPressed(settings.ganghelper.keyDeagle) then
+            if isKeyDown(settings.ganghelper.keyDeagle) then
               antiFlood()
               sampSendChat("/gun deagle 14")
             end
-            if wasKeyPressed(settings.ganghelper.keyM4) then
+            if isKeyDown(settings.ganghelper.keyM4) then
               antiFlood()
               sampSendChat("/gun m4 20")
             end
-            if wasKeyPressed(settings.ganghelper.keyRifle) then
+            if isKeyDown(settings.ganghelper.keyRifle) then
               antiFlood()
               sampSendChat("/gun rifle 10")
             end
