@@ -561,7 +561,6 @@ function auth()
             )
 
           end
-          auth_complete = true
           enableEvents()
 
         elseif info.result == "wrong user" then
@@ -658,8 +657,7 @@ function updateMenu()
     vspiwka.desc(),
     warnings.desc(),
     deathlist.desc(),
-    ganghelper.desc()
-    "\n{AAAAAA}Модули таранта",
+    ganghelper.desc() "\n{AAAAAA}Модули таранта",
     iznanka.desc(),
     doublejump.desc(),
     adr.desc(),
@@ -2294,15 +2292,11 @@ function capturetimerModule()
   end
 
   local onSendChat = function(message)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   local onSendCommand = function(cmd)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   local prepare = function(request_table)
@@ -2882,35 +2876,31 @@ function scoreModule()
   }
 
   local onSendGiveDamage = function(playerID, damage, weaponID, bodypart)
-    if auth_complete then
-      if sampIsPlayerConnected(playerID) then
-        result, handle2 = sampGetCharHandleBySampPlayerId(playerID)
-        if result then
-          health = sampGetPlayerHealth(playerID)
-          if health < damage or health == 0 then
-            kills = kills + 1
-            k_kills = k_kills + 1
-            settings.stats.kills = settings.stats.kills + 1
-            inicfg.save(settings, "edith")
-          end
+    if sampIsPlayerConnected(playerID) then
+      result, handle2 = sampGetCharHandleBySampPlayerId(playerID)
+      if result then
+        health = sampGetPlayerHealth(playerID)
+        if health < damage or health == 0 then
+          kills = kills + 1
+          k_kills = k_kills + 1
+          settings.stats.kills = settings.stats.kills + 1
+          inicfg.save(settings, "edith")
         end
-        k_given = k_given + damage
-        given = given + damage
-        settings.stats.dmg = settings.stats.dmg + damage
-        inicfg.save(settings, "edith")
       end
+      k_given = k_given + damage
+      given = given + damage
+      settings.stats.dmg = settings.stats.dmg + damage
+      inicfg.save(settings, "edith")
     end
   end
 
   local onSendTakeDamage = function(playerID, damage, weaponID, bodypart)
-    if auth_complete then
-      if sampIsPlayerConnected(playerID) then
-        killer = sampGetPlayerNickname(playerID)
-        killer_id = playerID
-        killer_w = weaponID
-        killer_b = bodypart
-        last_in = os.time()
-      end
+    if sampIsPlayerConnected(playerID) then
+      killer = sampGetPlayerNickname(playerID)
+      killer_id = playerID
+      killer_w = weaponID
+      killer_b = bodypart
+      last_in = os.time()
     end
   end
 
@@ -3297,37 +3287,35 @@ function cipherModule()
   end
 
   local onSendCommand = function(cmd)
-    if auth_complete then
-      if settings.cipher.enable then
-        if settings.cipher.auto and string.find(cmd, "/[r|f] (.+)") and not string.find(cmd, "ЕNС: ") then
-          cmd = "/re " .. string.match(cmd, "/[r|f] (.+)")
-        end
-        if string.find(cmd, "/[f|r]e (.+)") then
-          local message = string.match(cmd, "/[f|r]e (.+)")
-          if string.len(message) > 35 then
-            lua_thread.create(
-                    function()
-                      local ind, max = 1, math.ceil(string.len(message) / 32)
-                      for i = 1, max do
-                        wait(100)
-                        local mes = ((i == 1 and "") or "..") .. string.sub(message, ind, ind + 32) .. ((max == i and "") or "..")
-                        if mes ~= "" then
-                          repeat
-                            wait(50)
-                            local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-                            local ms = math.ceil(os.clock() * 1000 - sleep)
-                          until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
-                          sampSendChat(string.format("/f ЕNС: %s", encode(mes)))
-                        end
-                        ind = ind + 33
+    if settings.cipher.enable then
+      if settings.cipher.auto and string.find(cmd, "/[r|f] (.+)") and not string.find(cmd, "ЕNС: ") then
+        cmd = "/re " .. string.match(cmd, "/[r|f] (.+)")
+      end
+      if string.find(cmd, "/[f|r]e (.+)") then
+        local message = string.match(cmd, "/[f|r]e (.+)")
+        if string.len(message) > 35 then
+          lua_thread.create(
+                  function()
+                    local ind, max = 1, math.ceil(string.len(message) / 32)
+                    for i = 1, max do
+                      wait(100)
+                      local mes = ((i == 1 and "") or "..") .. string.sub(message, ind, ind + 32) .. ((max == i and "") or "..")
+                      if mes ~= "" then
+                        repeat
+                          wait(50)
+                          local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+                          local ms = math.ceil(os.clock() * 1000 - sleep)
+                        until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+                        sampSendChat(string.format("/f ЕNС: %s", encode(mes)))
                       end
+                      ind = ind + 33
                     end
-            )
-            return false
-          end
-          sampSendChat(string.format("/f ЕNС: %s", encode(message)))
+                  end
+          )
           return false
         end
+        sampSendChat(string.format("/f ЕNС: %s", encode(message)))
+        return false
       end
     end
   end
@@ -3438,10 +3426,8 @@ function heistbeepModule()
   }
 
   local onCreatePickup = function(id, model, pickuptype, position)
-    if auth_complete then
-      if model == 2358 or model == 2912 or model == 1650 then
-        hooked_pickup = id
-      end
+    if model == 2358 or model == 2912 or model == 1650 then
+      hooked_pickup = id
     end
   end
 
@@ -3457,16 +3443,14 @@ function heistbeepModule()
   end
 
   local onSendPickedUpPickup = function(id)
-    if auth_complete then
-      if settings.heist.enable and hooked_pickup ~= 0 then
-        if id == hooked_pickup then
-          if os.clock() >= heist_timestamp + 5.8 then
-            heist_timestamp = os.clock()
-            heist_t = true
-          else
-            if settings.heist.smart then
-              return false
-            end
+    if settings.heist.enable and hooked_pickup ~= 0 then
+      if id == hooked_pickup then
+        if os.clock() >= heist_timestamp + 5.8 then
+          heist_timestamp = os.clock()
+          heist_t = true
+        else
+          if settings.heist.smart then
+            return false
           end
         end
       end
@@ -3709,15 +3693,11 @@ function struckModule()
   end
 
   local onSendChat = function(message)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   local onSendCommand = function(cmd)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   return {
@@ -4180,18 +4160,14 @@ function camhackModule()
   }
 
   local onPlayerChatBubble = function(id, col, dist, dur, msg)
-    if auth_complete then
-      if flymode == 1 and settings.camhack.bubble then
-        return { id, col, 1488, dur, msg }
-      end
+    if flymode == 1 and settings.camhack.bubble then
+      return { id, col, 1488, dur, msg }
     end
   end
 
   local onSendAimSync = function()
-    if auth_complete then
-      if flymode == 1 and settings.camhack.antiwarning then
-        return false
-      end
+    if flymode == 1 and settings.camhack.antiwarning then
+      return false
     end
   end
 
@@ -5084,9 +5060,7 @@ function likerModule()
   end
 
   local onSendChat = function(message)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   return {
@@ -5390,19 +5364,15 @@ function gzcheckModule()
   }
 
   local onCreateGangZone = function(zoneId, squareStart, squareEnd, color)
-    if auth_complete then
-      zones[zoneId] = {}
-      zones[zoneId]["start"] = squareStart
-      zones[zoneId]["end"] = squareEnd
-      zones[zoneId]["color"] = color
-    end
+    zones[zoneId] = {}
+    zones[zoneId]["start"] = squareStart
+    zones[zoneId]["end"] = squareEnd
+    zones[zoneId]["color"] = color
   end
 
   local onGangZoneDestroy = function(zoneId)
-    if auth_complete then
-      zones[zoneId] = nil
-      act_zones[zoneId] = nil
-    end
+    zones[zoneId] = nil
+    act_zones[zoneId] = nil
   end
 
   local onGangZoneFlash = function(zoneId, color)
@@ -6508,42 +6478,36 @@ function drugsmatsModule()
   end
 
   local onSendChat = function(message)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   local onSendCommand = function(cmd)
-    if auth_complete then
-      if settings.drugsmats.enable then
-        local command, params = string.match(cmd:lower(), "^%/([^ ]*)(.*)")
-        if command == ini.global.cmd:lower() or string.find(command, ini[inikeys].server_cmd) then
-          if string.find(params, "menu") then
-            rubin_drugs_mats_ShowDialog(1)
-            return false
+    if settings.drugsmats.enable then
+      local command, params = string.match(cmd:lower(), "^%/([^ ]*)(.*)")
+      if command == ini.global.cmd:lower() or string.find(command, ini[inikeys].server_cmd) then
+        if string.find(params, "menu") then
+          rubin_drugs_mats_ShowDialog(1)
+          return false
+        end
+        if #params == 0 then
+          local gramm = math.ceil(((ini[inikeys].hp + 1) - getCharHealth(playerPed)) / ini[inikeys].hp_one_gram)
+          if gramm > ini[inikeys].max_use_gram then
+            gramm = ini[inikeys].max_use_gram
           end
-          if #params == 0 then
-            local gramm = math.ceil(((ini[inikeys].hp + 1) - getCharHealth(playerPed)) / ini[inikeys].hp_one_gram)
-            if gramm > ini[inikeys].max_use_gram then
-              gramm = ini[inikeys].max_use_gram
-            end
-            second_timer = os.difftime(os.time(), drugs_timer)
-            if second_timer <= ini[inikeys].seconds * bonus_drugs and second_timer > 0 then
-              gramm = 1
-            end
-            return { string.format('/%s %d', ini[inikeys].server_cmd, gramm) }
+          second_timer = os.difftime(os.time(), drugs_timer)
+          if second_timer <= ini[inikeys].seconds * bonus_drugs and second_timer > 0 then
+            gramm = 1
           end
-          if command == ini.global.cmd:lower() then
-            cmd = cmd:lower():gsub(ini.global.cmd:lower(), ini[inikeys].server_cmd)
-            return { cmd }
-          end
+          return { string.format('/%s %d', ini[inikeys].server_cmd, gramm) }
+        end
+        if command == ini.global.cmd:lower() then
+          cmd = cmd:lower():gsub(ini.global.cmd:lower(), ini[inikeys].server_cmd)
+          return { cmd }
         end
       end
     end
 
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   local onShowDialog = function(dialog, style, title, button1, button2, text)
@@ -8704,11 +8668,9 @@ function deathListModule()
   }
 
   local onCreate3DText = function(id, color, position, distance, testLOS, attachedPlayerId, attachedVehicleId, text)
-    if auth_complete then
-      if distance == 100 and (color == -1 or color == -16776961) and testLOS and attachedPlayerId == 65535 and attachedVehicleId == 65535 then
-        if tpmp == false then
-          damage_col = damage_col + tonumber(text)
-        end
+    if distance == 100 and (color == -1 or color == -16776961) and testLOS and attachedPlayerId == 65535 and attachedVehicleId == 65535 then
+      if tpmp == false then
+        damage_col = damage_col + tonumber(text)
       end
     end
   end
@@ -8768,68 +8730,60 @@ function deathListModule()
   end
 
   local onShowTextDraw = function(id, tab)
-    if auth_complete then
-      if tab.text:find("~y~KILLS~n~") then
-        terra = true
-        terra_id = id
-      end
-      if tab.flags == 18 then
-        if string.find(tab.text, "KILL") ~= nil then
-          name = string.match(string.gsub(tab.text, ' %- KILL', ''), '(.+) %-')
-          if setContains(killedBitches, name) then
-            local time = os.time(os.date("!*t")) - killedBitches[name]
-            if time > 5 then
-              if setContains(woundedBitches, name) then
-                local time = os.time(os.date("!*t")) - woundedBitches[name]
-                if time < 2 then
-                  addToSet(killedBitches, name)
-                  checkIfAfkKill(name)
-                end
+    if tab.text:find("~y~KILLS~n~") then
+      terra = true
+      terra_id = id
+    end
+    if tab.flags == 18 then
+      if string.find(tab.text, "KILL") ~= nil then
+        name = string.match(string.gsub(tab.text, ' %- KILL', ''), '(.+) %-')
+        if setContains(killedBitches, name) then
+          local time = os.time(os.date("!*t")) - killedBitches[name]
+          if time > 5 then
+            if setContains(woundedBitches, name) then
+              local time = os.time(os.date("!*t")) - woundedBitches[name]
+              if time < 2 then
+                addToSet(killedBitches, name)
+                checkIfAfkKill(name)
               end
             end
-          else
-            addToSet(killedBitches, name)
-            checkIfAfkKill(name)
           end
+        else
+          addToSet(killedBitches, name)
+          checkIfAfkKill(name)
         end
       end
-      if tab.flags == 24 then
-        if string.find(tab.text, "KILL") ~= nil then
-          name = string.match(string.gsub(tab.text, '%-%d[%d.,]* %- KILL', ''), '(.+) %-')
-          lastKilledBy = name
-        end
+    end
+    if tab.flags == 24 then
+      if string.find(tab.text, "KILL") ~= nil then
+        name = string.match(string.gsub(tab.text, '%-%d[%d.,]* %- KILL', ''), '(.+) %-')
+        lastKilledBy = name
       end
     end
   end
 
   local onTextDrawHide = function(id)
-    if auth_complete then
-      if terra and terra_id ~= 0 then
-        if terra_id == id then
-          terra = false
-          terra_id = 0
-        end
+    if terra and terra_id ~= 0 then
+      if terra_id == id then
+        terra = false
+        terra_id = 0
       end
     end
   end
 
   local onSendGiveDamage = function(playerID, damage, weaponID, bodypart)
-    if auth_complete then
-      if sampIsPlayerConnected(playerID) then
-        weap = weaponID
-        addToSet(woundedBitches, sampGetPlayerNickname(playerID))
-      end
+    if sampIsPlayerConnected(playerID) then
+      weap = weaponID
+      addToSet(woundedBitches, sampGetPlayerNickname(playerID))
     end
   end
 
   local onSendTakeDamage = function(playerID, damage, weaponID, bodypart)
-    if auth_complete then
-      if sampIsPlayerConnected(playerID) then
-        if playerID < 1001 then
-          enemyWeap = weaponID
-          if tpmp == false then
-            damage_col_in = damage_col_in + damage
-          end
+    if sampIsPlayerConnected(playerID) then
+      if playerID < 1001 then
+        enemyWeap = weaponID
+        if tpmp == false then
+          damage_col_in = damage_col_in + damage
         end
       end
     end
@@ -9240,15 +9194,11 @@ function ganghelperModule()
   end
 
   local onSendChat = function(message)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   local onSendCommand = function(cmd)
-    if auth_complete then
-      sleep = os.clock() * 1000
-    end
+    sleep = os.clock() * 1000
   end
 
   return {
@@ -9317,76 +9267,74 @@ function processEvent(func, args)
 end
 
 function onServerMessage(color, text)
-  if auth_complete then
-    local res = processEvent(storoj.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(storoj.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(struck.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(struck.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(tweaks.onServerMessageAdBlock, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(tweaks.onServerMessageAdBlock, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(tweaks.onServerMessageHideShit, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(tweaks.onServerMessageHideShit, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(tweaks.onServerMessageHideGov, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(tweaks.onServerMessageHideGov, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(drugsmats.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(drugsmats.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(cipher.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(cipher.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(capturetimer.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(capturetimer.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(bikerlist.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(bikerlist.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(liker.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(liker.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(healme.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(healme.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(deathlist.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(deathlist.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(ganghelper.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(ganghelper.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(adr.onServerMessage, table.pack(color, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(adr.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
   end
 end
 
@@ -9485,50 +9433,46 @@ function onSendAimSync()
 end
 
 function onSendDialogResponse(dialogId, button, listboxId, input)
-  if auth_complete then
-    local res = processEvent(storoj.onSendDialogResponse, table.pack(dialogId, button, listboxId, input))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(storoj.onSendDialogResponse, table.pack(dialogId, button, listboxId, input))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(acapture.onSendDialogResponse, table.pack(dialogId, button, listboxId, input))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(acapture.onSendDialogResponse, table.pack(dialogId, button, listboxId, input))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(rcapture.onSendDialogResponse, table.pack(dialogId, button, listboxId, input))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(rcapture.onSendDialogResponse, table.pack(dialogId, button, listboxId, input))
+  if res then
+    return table.unpack(res)
   end
 end
 
 function onShowDialog(dialog, style, title, button1, button2, text)
-  if auth_complete then
-    local res = processEvent(drugsmats.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(drugsmats.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(storoj.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(storoj.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(getgun.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(getgun.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(acapture.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(acapture.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
+  if res then
+    return table.unpack(res)
+  end
 
-    local res = processEvent(rcapture.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
-    if res then
-      return table.unpack(res)
-    end
+  local res = processEvent(rcapture.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
+  if res then
+    return table.unpack(res)
   end
 end
 function onCreateGangZone(zoneId, squareStart, squareEnd, color)
