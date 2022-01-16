@@ -9143,7 +9143,7 @@ function ganghelperModule()
   }
   local skin = { 41, 114, 115, 116, 56, 105, 106, 107, 269, 270, 271, 195, 102, 103, 104, 190, 108, 109, 110, 226, 173, 174, 175 }
   local sleep = 0
-  local isBandit = 0
+  local result = 0
   local dist = 99999
 
   local antiFlood = function()
@@ -9152,21 +9152,31 @@ function ganghelperModule()
     until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
+  local isBandit = function()
+    result = false
+    for i = 1, #skin do
+      if isCharModel(PLAYER_PED, skin[i]) then
+        result = true
+      end
+    end
+    return result
+  end
+
   local mainThread = function()
     while true do
       wait(100)
       if settings.ganghelper.enable then
         if settings.ganghelper.gunkeys then
           if not sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() then
-            if isKeyDown(settings.ganghelper.keyDeagle) then
+            if isKeyDown(settings.ganghelper.keyDeagle) and isBandit() then
               antiFlood()
               sampSendChat("/gun deagle 14")
             end
-            if isKeyDown(settings.ganghelper.keyM4) then
+            if isKeyDown(settings.ganghelper.keyM4) and isBandit() then
               antiFlood()
               sampSendChat("/gun m4 20")
             end
-            if isKeyDown(settings.ganghelper.keyRifle) then
+            if isKeyDown(settings.ganghelper.keyRifle) and isBandit() then
               antiFlood()
               sampSendChat("/gun rifle 10")
             end
@@ -9247,13 +9257,7 @@ function ganghelperModule()
     if settings.ganghelper.enable then
       if settings.ganghelper.getguns then
         if string.find(text, " (.*) открыл%(а%) склад с оружием") then
-          isBandit = 0
-          for i = 1, #skin do
-            if isCharModel(PLAYER_PED, skin[i]) then
-              isBandit = 1
-            end
-          end
-          if isBandit == 1 then
+          if isBandit() then
             for k, v in pairs(coord_resp) do
               dist = math.floor(getDistanceBetweenCoords3d(v[1], v[2], v[3], getCharCoordinates(playerPed)))
               if dist <= 100.0 then
