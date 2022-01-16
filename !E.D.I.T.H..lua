@@ -142,6 +142,7 @@ function main()
   vspiwka = vspiwkaModule()
   warnings = warningsModule()
   deathlist = deathListModule()
+  ganghelper = ganghelperModule()
 
   iznanka = iznankaModule()
   doublejump = doubleJumpModule()
@@ -200,6 +201,7 @@ function main()
             vspiwka = vspiwka.defaults,
             warningsS = warnings.defaults,
             deathlist = deathlist.defaults,
+            ganghelper = ganghelper.defaults,
 
             iznanka = iznanka.defaults,
             doublejump = doublejump.defaults,
@@ -281,6 +283,7 @@ function main()
   lua_thread.create(vspiwka.main)
   lua_thread.create(warnings.main)
   lua_thread.create(deathlist.main)
+  lua_thread.create(ganghelper.main)
 
   lua_thread.create(iznanka.main)
   lua_thread.create(doublejump.main)
@@ -655,6 +658,7 @@ function updateMenu()
     vspiwka.desc(),
     warnings.desc(),
     deathlist.desc(),
+    ganghelper.desc()
     "\n{AAAAAA}Модули таранта",
     iznanka.desc(),
     doublejump.desc(),
@@ -851,6 +855,7 @@ function updateMenu()
     vspiwka.getMenu(),
     warnings.getMenu(),
     deathlist.getMenu(),
+    ganghelper.getMenu(),
     {
       title = " "
     },
@@ -902,6 +907,7 @@ function updateMenu()
         vspiwka.enable()
         warnings.enable()
         deathlist.enable()
+        ganghelper.enable()
 
         iznanka.enable()
         doublejump.enable()
@@ -942,6 +948,7 @@ function updateMenu()
         vspiwka.disable()
         warnings.disable()
         deathlist.disable()
+        ganghelper.disable()
 
         iznanka.disable()
         doublejump.disable()
@@ -9087,6 +9094,175 @@ function adrModule()
     onServerMessage = onServerMessage
   }
 end
+
+--------------------------------------------------------------------------------
+----------------------------------GANGHELPER------------------------------------
+--------------------------------------------------------------------------------
+function ganghelperModule()
+  local coord_resp = {
+    { 2494.29296875, -1681.8502197266, 12.338387489319 }, -- grove
+    { 2183.3081054688, -1807.8851318359, 12.373405456543 }, -- rifa
+    { 287.72546386719, -141.66345214844, 1006.15625 }, -- rifa inta
+    { 1582.6881103516, -1597.0266113281, 27.475524902344 }, -- aztec inta
+    { 1672.9483642578, -2113.423828125, 12.546875 }, -- aztec
+    { 2647.3308105469, -2029.4759521484, 12.546875 }, -- ballas
+    { 607.73522949219, -147.71377563477, 0 }, -- ballas inta
+    { 2780.3444824219, -1615.7406005859, 9.921875 }, -- vagos
+    { 358.85055541992, 34.617668151855, 0 } -- vagos inta
+  }
+  local skin = { 41, 114, 115, 116, 56, 105, 106, 107, 269, 270, 271, 195, 102, 103, 104, 190, 108, 109, 110, 226, 173, 174, 175 }
+  local sleep = 0
+  local isBandit = 0
+  local dist = 99999
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
+  local mainThread = function()
+    while true do
+      wait(100)
+      if settings.ganghelper.enable then
+        if settings.ganghelper.gunkeys then
+          if sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() then
+            if wasKeyPressed(settings.ganghelper.keyDeagle) then
+              antiFlood()
+              sampSendChat("/gun deagle 14")
+            end
+            if wasKeyPressed(settings.ganghelper.keyM4) then
+              antiFlood()
+              sampSendChat("/gun m4 20")
+            end
+            if wasKeyPressed(settings.ganghelper.keyRifle) then
+              antiFlood()
+              sampSendChat("/gun rifle 10")
+            end
+          end
+        end
+      end
+    end
+  end
+
+  local getMenu = function()
+    return {
+      title = "{7ef3fa}* " .. (settings.ganghelper.enable and "{00ff66}" or "{ff0000}") .. "GANGHELPER",
+      submenu = {
+        {
+          title = "Информация о модуле",
+          onclick = function()
+            sampShowDialog(
+                    0,
+                    "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"GANGHELPER"',
+                    "{00ff66}GANGHELPER{ffffff}\nФункции, упрощающие геймплей бандита\n\n1. Автопополнение материалов когда вы на респе и склад открывается.\n2. Хоткеи на оружие :4 - deagle 14, 5 - m4 20, 6 - rifle 10.",
+                    "Окей"
+            )
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Включить: " .. tostring(settings.ganghelper.enable),
+          onclick = function()
+            settings.ganghelper.enable = not settings.ganghelper.enable
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Брать ган когда открывается склад: " .. tostring(settings.ganghelper.getguns),
+          onclick = function()
+            settings.ganghelper.getguns = not settings.ganghelper.getguns
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "Хоткеи на оружие: " .. tostring(settings.ganghelper.gunkeys),
+          onclick = function()
+            settings.ganghelper.gunkeys = not settings.ganghelper.gunkeys
+            inicfg.save(settings, "edith")
+          end
+        }
+      }
+    }
+  end
+
+  local description = function()
+    return "{7ef3fa}* " .. (settings.ganghelper.enable and "{00ff66}" or "{ff0000}") .. "GANGHELPER - {ffffff}Упрощение геймплея бандита."
+  end
+
+  local enableAll = function()
+    settings.ganghelper.enable = true
+  end
+
+  local disableAll = function()
+    settings.ganghelper.enable = false
+  end
+
+  local defaults = {
+    enable = true,
+    getguns = true,
+    gunkeys = true,
+    gunDeagle = VK_4,
+    gunM4 = VK_5,
+    gunRifle = VK_6
+  }
+
+  local onServerMessage = function(color, text)
+    if settings.ganghelper.enable then
+      if settings.ganghelper.getguns then
+        if string.find(text, " (.*) открыл%(а%) склад с оружием") then
+          isBandit = 0
+          for i = 1, #skin do
+            if isCharModel(PLAYER_PED, skin[i]) then
+              isBandit = 1
+            end
+          end
+          if isBandit == 1 then
+            for k, v in pairs(coord_resp) do
+              dist = math.floor(getDistanceBetweenCoords3d(v[1], v[2], v[3], getCharCoordinates(playerPed)))
+              if dist <= 100.0 then
+                lua_thread.create(function()
+                  antiFlood()
+                  sampSendChat('/get guns')
+                end)
+                break
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  local onSendChat = function(message)
+    if auth_complete then
+      sleep = os.clock() * 1000
+    end
+  end
+
+  local onSendCommand = function(cmd)
+    if auth_complete then
+      sleep = os.clock() * 1000
+    end
+  end
+
+  return {
+    main = mainThread,
+    getMenu = getMenu,
+    desc = description,
+    enable = enableAll,
+    disable = disableAll,
+    defaults = defaults,
+    onServerMessage = onServerMessage,
+    onSendChat = onSendChat,
+    onSendCommand = onSendCommand
+  }
+end
 --------------------------------------------------------------------------------
 ------------------------------------TEMPLATE------------------------------------
 --------------------------------------------------------------------------------
@@ -9202,6 +9378,11 @@ function onServerMessage(color, text)
       return table.unpack(res)
     end
 
+    local res = processEvent(ganghelper.onServerMessage, table.pack(color, text))
+    if res then
+      return table.unpack(res)
+    end
+
     local res = processEvent(adr.onServerMessage, table.pack(color, text))
     if res then
       return table.unpack(res)
@@ -9259,6 +9440,10 @@ function onSendCommand(cmd)
     return table.unpack(res)
   end
   local res = processEvent(capturetimer.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(ganghelper.onSendCommand, table.pack(cmd))
   if res then
     return table.unpack(res)
   end
@@ -9388,6 +9573,10 @@ function onSendChat(message)
     return table.unpack(res)
   end
   local res = processEvent(capturetimer.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(ganghelper.onSendChat, table.pack(message))
   if res then
     return table.unpack(res)
   end
