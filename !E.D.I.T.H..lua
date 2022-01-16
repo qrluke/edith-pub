@@ -9145,6 +9145,8 @@ function ganghelperModule()
   local sleep = 0
   local result = 0
   local dist = 99999
+  local checkafk = os.time()
+  local wasafk = false
 
   local antiFlood = function()
     repeat
@@ -9164,7 +9166,13 @@ function ganghelperModule()
 
   local mainThread = function()
     while true do
-      wait(100)
+      wait(0)
+      if os.clock() - checkafk > 2 then
+        wasafk = true
+      else
+        wasafk = false
+      end
+      checkafk = os.clock()
       if settings.ganghelper.enable then
         if settings.ganghelper.gunkeys then
           if not sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() then
@@ -9257,7 +9265,7 @@ function ganghelperModule()
     if settings.ganghelper.enable then
       if settings.ganghelper.getguns then
         if string.find(text, " (.*) открыл%(а%) склад с оружием") then
-          if isBandit() then
+          if not wasafk and isBandit() then
             for k, v in pairs(coord_resp) do
               dist = math.floor(getDistanceBetweenCoords3d(v[1], v[2], v[3], getCharCoordinates(playerPed)))
               if dist <= 100.0 then
