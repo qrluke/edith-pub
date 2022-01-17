@@ -6441,9 +6441,9 @@ function drugsmatsModule()
             not_drugs_timer = false
           end
         end
-        if string.find(message, "оружие из материалов") then
-          lua_thread.create(rubin_drugs_mats_GetMats)
-        end
+        --if string.find(message, "оружие из материалов") then
+        --  lua_thread.create(rubin_drugs_mats_GetMats)
+        --end
       end
       if message:find('выбросил') and (message:find('аркотики') or message:find('атериалы')) and string.find(message, my_name) then
         lua_thread.create(rubin_drugs_mats_GetMats)
