@@ -9147,11 +9147,12 @@ function ganghelperModule()
   local dist = 99999
   local checkafk = os.time()
   local wasafk = false
+  local fcapture = false
 
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+    until math.ceil(os.clock() * 1000 - sleep) > 600 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local isBandit = function()
@@ -9165,15 +9166,24 @@ function ganghelperModule()
   end
 
   local mainThread = function()
+    if settings.ganghelper.fcapture then
+      sampRegisterChatCommand("fcapture", function()
+        fcapture = not fcapture
+      end)
+    end
     while true do
       wait(0)
-      if os.clock() - checkafk > 2 then
-        wasafk = true
-      else
-        wasafk = false
-      end
-      checkafk = os.clock()
       if settings.ganghelper.enable then
+        if settings.ganghelper.fcapture and fcapture then
+          antiFlood()
+          sampSendChat("/capture")
+        end
+        if os.clock() - checkafk > 2 then
+          wasafk = true
+        else
+          wasafk = false
+        end
+        checkafk = os.clock()
         if settings.ganghelper.gunkeys then
           if not sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive() then
             if isKeyDown(settings.ganghelper.keyDeagle) and isBandit() then
@@ -9235,6 +9245,14 @@ function ganghelperModule()
             settings.ganghelper.gunkeys = not settings.ganghelper.gunkeys
             inicfg.save(settings, "edith")
           end
+        },
+        {
+          title = "Флудер /fcapture: " .. tostring(settings.ganghelper.fcapture),
+          onclick = function()
+            settings.ganghelper.fcapture = not settings.ganghelper.fcapture
+            inicfg.save(settings, "edith")
+            thisScript():reload()
+          end
         }
       }
     }
@@ -9255,7 +9273,8 @@ function ganghelperModule()
   local defaults = {
     enable = true,
     getguns = true,
-    gunkeys = true,
+    gunkeys = false,
+    fcapture = true,
     keyDeagle = VK_4,
     keyM4 = VK_5,
     keyRifle = VK_6
@@ -9263,6 +9282,11 @@ function ganghelperModule()
 
   local onServerMessage = function(color, text)
     if settings.ganghelper.enable then
+      if settings.ganghelper.fcapture then
+        if text == " Ваша банда уже воюет за территорию" then
+          fcapture = false
+        end
+      end
       if settings.ganghelper.getguns then
         if string.find(text, " (.*) открыл%(а%) склад с оружием") then
           if not wasafk and isBandit() then
