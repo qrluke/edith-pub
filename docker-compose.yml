@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-edith
+    ports:
+      - "33333:33333"
+    restart: unless-stopped
+    environment:
+      DELAY: 250
+    logging:
+      options:
+        max-size: '1m'
+        max-file: '10'
+      driver: json-file
+    volumes:
+      - edith-config:/sanic/config
+  update-whitelist:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-whitelist
+    restart: unless-stopped
+    environment:
+      DELAY_IN_SECONDS: 300
+      WHITELIST_RAW_LINK: "https://friendpaste.com/ID/raw"
+    logging:
+      options:
+        max-size: '1m'
+        max-file: '10'
+      driver: json-file
+    volumes:
+      - edith-config:/config
+  update-twinks:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-twinks
+    restart: unless-stopped
+    environment:
+      DELAY_IN_SECONDS: 300
+      TWINKS_RAW_LINK: "https://friendpaste.com/ID/raw"
+    logging:
+      options:
+        max-size: '1m'
+        max-file: '10'
+      driver: json-file
+    volumes:
+      - edith-config:/config
+volumes:
+  edith-config:

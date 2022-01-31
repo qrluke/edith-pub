@@ -254,7 +254,7 @@ def getAdmTop(timestamp, html=False):
 @app.route('/top')
 async def test(request):
     global twink
-    with open("twinks.json", "r") as fp:
+    with open("config/twinks.json", "r") as fp:
         twink = js.load(fp)
     day = datetime.datetime.now(pytz.timezone("Europe/Moscow"))
     timestamp = datetime.datetime.now(pytz.timezone("Europe/Moscow")).replace(hour=5, minute=0, second=0,
@@ -376,13 +376,13 @@ async def test(request, exception):
     answer = {}
     answer["capter"] = ""
     if 'auth' in info:
-        if last_changed != os.stat("whitelist.txt").st_mtime:
-            with io.open('whitelist.txt') as file:
+        if last_changed != os.stat("config/whitelist.txt").st_mtime:
+            with io.open('config/whitelist.txt') as file:
                 for line in file:
                     x = line.split()
                     if len(x) == 2:
                         users.update({x[0]: x[1]})
-            last_changed = os.stat("whitelist.txt").st_mtime
+            last_changed = os.stat("config/whitelist.txt").st_mtime
 
         if info['auth'] not in users:
             return json({"result": "wrong user"})
@@ -647,11 +647,11 @@ def startupCheck(PATH):
 
 
 if __name__ == '__main__':
-    database = Database('sqlite:///deathlist.db')
+    database = Database('sqlite:///db/deathlist.db')
     asyncio.run(database.connect())
 
-    startupCheck("twinks.json")
-    with open("twinks.json", "r") as fp:
+    startupCheck("config/twinks.json")
+    with open("config/twinks.json", "r") as fp:
         twink = js.load(fp)
 
     app.run(host='0.0.0.0', port=33333, debug=True)
