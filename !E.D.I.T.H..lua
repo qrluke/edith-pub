@@ -74,7 +74,7 @@ end
 
 function onScriptTerminate(LuaScript, quitGame)
   if LuaScript == thisScript() then
-    if not quitGame then
+    if not quitGame and settings then
       if first_instance_id == thisScript().id then
         if settings.test.reloadonterminate then
           if do_not_reload or isKeyDown(VK_R) then
