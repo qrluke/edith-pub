@@ -1,6 +1,11 @@
+--[[
+  ЕСЛИ СКРИПТ КРАШИТ С ОШИБКОЙ cannot resume non-suspended coroutine:
+  - /edith -> СБОРЩИК МУСОРА -> ОТКЛЮЧИТЬ СБОРЩИК МУСОРА
+]]
+
 script_name("E.D.I.T.H.")
 script_author("qrlk") --большая часть модулей самописная, часть взята из доработанных мной сторонних скриптов
-script_version("15.01.2022")
+script_version("01.02.2022")
 script_description("Это модульный скрипт для небольших закрытых сообществ игроков. Идея в том, чтобы впихнуть в один скрипт все нужные конкретной группе игроков скрипты в виде модулей. Модули можно настраивать, а сам скрипт защитить паролем и обмениваться информацией через модуль clientModule(). Эту информацию можно использовать в модулях, например обмениваться местоположением членов группы, показывать общий килллист, считать статистику KDA на сервере...")
 script_url("https://github.com/qrlk/edith-pub")
 --script_properties("work-in-pause")
@@ -8,7 +13,22 @@ script_url("https://github.com/qrlk/edith-pub")
 --поменять
 local ip = "http://localhost:33333/"--ip и порт сервера server.py (python3 server.py после pip3 install -r requirements.txt)
 local remoteResourceURL = "http://XXXXXXXXXXX.XX/resource/edith/"--путь туда, где хостится папки resource/edith
-local serverAddress = "95.181.158.64"--сервер, где вы играете
+local serverAddress = "127.0.0.1"--сервер, где вы играете
+
+local enableAutoUpdate = false --включить автообновление?
+local autoUpdateLink = "" --ссылка на json с информацией об актуальной версии
+local autoUpdateScriptUrl = "" --ссылка на информацию о скрипте
+local autoUpdateChangelogCommand = "" --команда по которой откроется changelog
+
+local changelog_menu = {}
+function updatechangelog()
+  changelog_menu = {}
+
+  add_to_changelog("vVERSION\tDATE",
+          "INFO/FIX/NEW\tMODULE\tTEXT." ..
+                  "INFO/FIX/NEW\tMODULE\tTEXT."
+  )
+end
 --поменять
 
 local dlstatus = require("moonloader").download_status
@@ -27,7 +47,6 @@ local ffi = require 'ffi'
 local secrets = inicfg.load({ passwords = {} }, "edith.secrets")
 
 local transponder_delay = 150
-
 --------------------------------------------------------------------------------
 ------------------------------------ANTIDUP-------------------------------------
 --------------------------------------------------------------------------------
@@ -111,12 +130,14 @@ function main()
     wait(-1)
   end
 
-  --update(
-  --        "DIRECT LINK TO /version.json",
-  --        "[" .. string.upper(thisScript().name) .. "]: ",
-  --        "SCRIPT_URL",
-  --        "CHANGELOGCOMMAND"
-  --)
+  if enableAutoUpdate then
+    update(
+            autoUpdateLink,
+            "[" .. string.upper(thisScript().name) .. "]: ",
+            autoUpdateScriptUrl,
+            autoUpdateChangelogCommand
+    )
+  end
 
   tweaks = tweaksModule()
 
@@ -9890,30 +9911,21 @@ function update(php, prefix, url, komanda)
   end
 end
 
-function updatechangelog()
-  changelog_menu = {}
-
-  function add_to_changelog(title, text)
-    local sub_log = {}
-    for string in string.gmatch(text, '[^\n]+') do
-      table.insert(sub_log,
-              {
-                title = string
-              }
-      )
-    end
-    table.insert(
-            changelog_menu,
+function add_to_changelog(title, text)
+  local sub_log = {}
+  for string in string.gmatch(text, '[^\n]+') do
+    table.insert(sub_log,
             {
-              title = title,
-              submenu = sub_log
+              title = string
             }
     )
   end
-
-  add_to_changelog("vVERSION\tDATE",
-          "INFO/FIX/NEW\tMODULE\tTEXT." ..
-                  "INFO/FIX/NEW\tMODULE\tTEXT."
+  table.insert(
+          changelog_menu,
+          {
+            title = title,
+            submenu = sub_log
+          }
   )
 end
 
