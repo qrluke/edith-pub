@@ -1,7 +1,5 @@
 FROM python:3.9.10-slim-buster
 
-COPY requirements.txt .
-
 EXPOSE 46547
 
 RUN adduser sanic -system -group
@@ -13,6 +11,8 @@ RUN mkdir db
 RUN chown sanic:sanic db
 
 USER sanic
+
+COPY requirements.txt .
 
 RUN pip3 install -r requirements.txt \
 && rm requirements.txt
