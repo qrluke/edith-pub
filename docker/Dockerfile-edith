@@ -2,16 +2,23 @@ FROM python:3.9.10-slim-buster
 
 COPY requirements.txt .
 
-RUN pip3 install -r requirements.txt \
-&& rm requirements.txt
-
 EXPOSE 46547
 
 RUN adduser sanic -system -group
 
-USER sanic
+RUN mkdir sanic
 WORKDIR /sanic
-COPY server.py .
+
 RUN mkdir db
+RUN chown sanic:sanic db
+
+USER sanic
+
+RUN pip3 install -r requirements.txt \
+&& rm requirements.txt
+
+COPY server.py .
+
 ENV DELAY=250
+
 ENTRYPOINT python3 server.py $DELAY

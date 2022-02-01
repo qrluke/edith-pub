@@ -18,7 +18,7 @@ last_c = time.time()
 
 import sqlite3
 
-con = sqlite3.connect('deathlist.db')
+con = sqlite3.connect('db/deathlist.db')
 cur = con.cursor()
 
 cur.executescript('''CREATE TABLE IF NOT EXISTS "dmg_out" (

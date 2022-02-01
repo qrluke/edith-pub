@@ -16,7 +16,8 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - edith-config:/sanic/config
+      - edith-pub_config:/sanic/config
+      - edith-pub_db:/sanic/db
   update-whitelist:
     build:
       context: .
@@ -31,7 +32,7 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - edith-config:/config
+      - edith-pub_config:/config
   update-twinks:
     build:
       context: .
@@ -46,6 +47,9 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - edith-config:/config
+      - edith-pub_config:/config
 volumes:
-  edith-config:
+  edith-pub_config:
+    name: edith-pub_config
+  edith-pub_db:
+    name: edith-pub_db

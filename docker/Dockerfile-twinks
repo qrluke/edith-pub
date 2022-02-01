@@ -4,9 +4,14 @@ RUN apk add --update --no-cache curl
 
 RUN addgroup curl && adduser -S -G curl curl
 
-USER curl
+RUN mkdir /config
+RUN chown curl:curl /config
+
 WORKDIR /config
-RUN touch whitelist.txt
+
+USER curl
+RUN touch twinks.json
+RUN echo "{}" >> twinks.json
 
 ENV DELAY_IN_SECONDS=40
 ENV TWINKS_RAW_LINK=https://friendpaste.com/ID/raw
