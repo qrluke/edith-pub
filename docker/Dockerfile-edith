@@ -1,6 +1,6 @@
 FROM python:3.9.10-slim-buster
 
-EXPOSE 46547
+EXPOSE 33333
 
 RUN adduser sanic -system -group
 
