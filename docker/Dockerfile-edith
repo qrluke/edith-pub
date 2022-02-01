@@ -14,8 +14,11 @@ USER sanic
 
 COPY requirements.txt .
 
-RUN pip3 install -r requirements.txt \
-&& rm requirements.txt
+RUN pip3 install -r requirements.txt
+
+USER root
+RUN rm requirements.txt
+USER sanic
 
 COPY server.py .
 
