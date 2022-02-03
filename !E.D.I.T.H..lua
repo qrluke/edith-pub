@@ -164,6 +164,7 @@ function main()
   warnings = warningsModule()
   deathlist = deathListModule()
   ganghelper = ganghelperModule()
+  bikerinfo = bikerInfoModule()
 
   iznanka = iznankaModule()
   doublejump = doubleJumpModule()
@@ -223,6 +224,7 @@ function main()
             warningsS = warnings.defaults,
             deathlist = deathlist.defaults,
             ganghelper = ganghelper.defaults,
+            bikerinfo = bikerinfo.defaults,
 
             iznanka = iznanka.defaults,
             doublejump = doublejump.defaults,
@@ -411,6 +413,8 @@ function main()
     deathlist.prepare(request_table)
 
     capturetimer.prepare(request_table)
+
+    bikerinfo.prepare(request_table)
 
     res_path = os.tmpname()
 
@@ -679,7 +683,7 @@ function updateMenu()
     warnings.desc(),
     deathlist.desc(),
     ganghelper.desc(),
-    "\n{AAAAAA}Модули таранта",
+    bikerinfo.desc() "\n{AAAAAA}Модули таранта",
     iznanka.desc(),
     doublejump.desc(),
     adr.desc(),
@@ -876,6 +880,7 @@ function updateMenu()
     warnings.getMenu(),
     deathlist.getMenu(),
     ganghelper.getMenu(),
+    bikerinfo.getMenu(),
     {
       title = " "
     },
@@ -928,6 +933,7 @@ function updateMenu()
         warnings.enable()
         deathlist.enable()
         ganghelper.enable()
+        bikerinfo.enable()
 
         iznanka.enable()
         doublejump.enable()
@@ -969,6 +975,7 @@ function updateMenu()
         warnings.disable()
         deathlist.disable()
         ganghelper.disable()
+        bikerinfo.disable()
 
         iznanka.disable()
         doublejump.disable()
@@ -9348,6 +9355,115 @@ function ganghelperModule()
   }
 end
 --------------------------------------------------------------------------------
+-----------------------------------BIKER-INFO-----------------------------------
+--------------------------------------------------------------------------------
+function bikerInfoModule()
+  local warehouse_simple = -1
+  local warehouse = {}
+  local capture = {}
+
+  local getMenu = function()
+    return {
+      title = "{7ef3fa}* " .. (settings.bikerinfo.enable and "{00ff66}" or "{ff0000}") .. "BIKERINFO",
+      submenu = {
+        {
+          title = "Информация о модуле",
+          onclick = function()
+            sampShowDialog(
+                    0,
+                    "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"BIKERINFO"',
+                    "{00ff66}BIKERINFO{ffffff}\nОтправляет на сервер информацию о складе и /capture.",
+                    "Окей"
+            )
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Включить: " .. tostring(settings.bikerinfo.enable),
+          onclick = function()
+            settings.bikerinfo.enable = not settings.bikerinfo.enable
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Отправлять информацию о складе: " .. tostring(settings.bikerinfo.warehouse),
+          onclick = function()
+            settings.bikerinfo.warehouse = not settings.bikerinfo.warehouse
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "Отправлять информацию о бизнесах: " .. tostring(settings.bikerinfo.bizlist),
+          onclick = function()
+            settings.bikerinfo.bizlist = not settings.bikerinfo.bizlist
+            inicfg.save(settings, "edith")
+          end
+        },
+      }
+    }
+  end
+
+  local description = function()
+    return "{7ef3fa}* " .. (settings.bikerinfo.enable and "{00ff66}" or "{ff0000}") .. "BIKERINFO - {ffffff}Отправляет на сервер информацию о складе и /capture."
+  end
+
+  local enableAll = function()
+    settings.bikerinfo.enable = true
+    settings.bikerinfo.warehouse = true
+    settings.bikerinfo.bizlist = true
+  end
+
+  local disableAll = function()
+    settings.bikerinfo.enable = false
+    settings.bikerinfo.warehouse = false
+    settings.bikerinfo.bizlist = false
+  end
+
+  local defaults = {
+    enable = true,
+    warehouse = true,
+    bizlist = true,
+  }
+
+  local prepare = function(request_table)
+    request_table["bikerinfo"] = {}
+  end
+
+  local onServerMessage = function(color, text)
+    if settings.bikerinfo.enable then
+      if settings.bikerinfo.warehouse then
+        --
+      end
+    end
+  end
+
+  local onShowDialog = function(dialog, style, title, button1, button2, text)
+    if settings.bikerinfo.enable then
+      if settings.bikerinfo.bizlist then
+        --
+      end
+    end
+  end
+
+  return {
+    getMenu = getMenu,
+    desc = description,
+    enable = enableAll,
+    disable = disableAll,
+    defaults = defaults,
+
+    prepare = prepare,
+
+    onServerMessage = onServerMessage,
+    onShowDialog = onShowDialog
+  }
+end
+--------------------------------------------------------------------------------
 ------------------------------------TEMPLATE------------------------------------
 --------------------------------------------------------------------------------
 --[[function xxxModule()
@@ -9462,6 +9578,11 @@ function onServerMessage(color, text)
   end
 
   local res = processEvent(ganghelper.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
+
+  local res = processEvent(bikerinfo.onServerMessage, table.pack(color, text))
   if res then
     return table.unpack(res)
   end
@@ -9688,6 +9809,11 @@ function onShowDialog(dialog, style, title, button1, button2, text)
   end
 
   local res = processEvent(rcapture.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
+  if res then
+    return table.unpack(res)
+  end
+
+  local res = processEvent(bikerinfo.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
   if res then
     return table.unpack(res)
   end
