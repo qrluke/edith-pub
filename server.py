@@ -366,9 +366,9 @@ death_list = []
 
 warehouse = {"timestamp": 0, "warehouse": 0, "max": 200000}
 warehouse_rest = {"timestamp": 0, "heal": 0, "heal_max": 5000, "alk": 0, "alk_all": 0, "benz": 0, "benz_all": 0}
-capture = {"timestamp": 0, "f0": {"t": "w", "c": "mc"}, "f1": {"t": "w", "c": "mc"}, "f2": {"t": "w", "c": "mc"},
-           "f3": {"t": "w", "c": "mc"}, "f4": {"t": "w", "c": "mc"}, "s0": {"t": "w", "c": "mc"},
-           "s1": {"t": "w", "c": "mc"}, "s2": {"t": "w", "c": "mc"}}
+capture_data = {"timestamp": 0, "f0": {"t": "w", "c": "mc"}, "f1": {"t": "w", "c": "mc"}, "f2": {"t": "w", "c": "mc"},
+                "f3": {"t": "w", "c": "mc"}, "f4": {"t": "w", "c": "mc"}, "s0": {"t": "w", "c": "mc"},
+                "s1": {"t": "w", "c": "mc"}, "s2": {"t": "w", "c": "mc"}}
 capture_next = {"timestamp": 0, "next": 0}
 
 
@@ -734,22 +734,22 @@ def bikerinfo():
         if warehouse_rest["timestamp"] != 0:
             string = f"\U0001F37A{warehouse_rest['alk']}\U0001F37A—\U000026FD{getCoolK(warehouse_rest['benz'])}\U000026FD—{unix2HM(warehouse_rest['timestamp'])}"
             set("warehouse_all", string)
-        if capture["timestamp"] != 0:
+        if capture_data["timestamp"] != 0:
             control = 0
             for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                if capture[bid]["c"] == os.environ["curb"]:
+                if capture_data[bid]["c"] == os.environ["curb"]:
                     control += 1
             st_own = ""
             for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                st_own += capture[bid]["c"][0]
+                st_own += capture_data[bid]["c"][0]
                 if bid != "s2":
                     st_own += "—"
             st_em = ""
             for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                st_em += emojis[capture[bid]["c"]]
+                st_em += emojis[capture_data[bid]["c"]]
             st_st = ""
             for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                if capture[bid]["t"] == "r":
+                if capture_data[bid]["t"] == "r":
                     st_st += "\U0001F534"
                 else:
                     st_st += "\U000026AA"
