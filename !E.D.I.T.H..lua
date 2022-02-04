@@ -9746,6 +9746,9 @@ function markerModule()
           title = "¬ключить: " .. tostring(settings.marker.enable),
           onclick = function()
             settings.marker.enable = not settings.marker.enable
+            if settings.marker.enable == false then
+              clrMarker()
+            end
             inicfg.save(settings, "edith")
           end
         },
@@ -9788,25 +9791,31 @@ function markerModule()
   }
 
   local prepare = function(request_table)
-    if target ~= nil then
-      request_table["marker"] = target
+    if settings.marker.enable then
+      if target ~= nil then
+        request_table["marker"] = target
 
-      target = nil
+        target = nil
+      end
     end
   end
 
   local process = function(ad)
-    if ad["marker"] then
-      if math.ceil(cur_x) ~= math.ceil(ad.marker.data.x) then
-        setMarker(ad.marker.data.x, ad.marker.data.y, ad.marker.data.z)
+    if settings.marker.enable then
+      if ad["marker"] then
+        if math.ceil(cur_x) ~= math.ceil(ad.marker.data.x) then
+          setMarker(ad.marker.data.x, ad.marker.data.y, ad.marker.data.z)
+        end
+      else
+        clrMarker()
       end
-    else
-      clrMarker()
     end
   end
 
   local onScriptTerminate = function()
-    clrMarker()
+    if settings and settings.marker and settings.marker.enable then
+      clrMarker()
+    end
   end
 
   return {
