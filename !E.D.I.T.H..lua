@@ -344,7 +344,7 @@ function main()
     end)
   end
 
-  if settings.gc.disable or settings.gc.m10 or settings.gc.m50 or settings.gc.m100 or settings.gc.m250 or settings.gc.m500 then
+  if true and settings.gc.disable or settings.gc.m10 or settings.gc.m50 or settings.gc.m100 or settings.gc.m250 or settings.gc.m500 then
     collectgarbage("stop")
   end
   local clear = 2000
