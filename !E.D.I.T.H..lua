@@ -565,7 +565,7 @@ function auth()
         wait(-1)
       else
         if info.result == "ok" then
-          liker.like_nicks = info.like
+          liker.process(info.like)
           transponder_delay = info.delay
           connected = true
           if Sgranted and settings.welcome.sound then
@@ -4976,6 +4976,12 @@ function likerModule()
   local asodkas, licenseid = sampGetPlayerIdByCharHandle(PLAYER_PED)
   local licensenick = sampGetPlayerNickname(licenseid)
 
+  local antiFlood = function()
+    repeat
+      wait(100)
+    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
   local sampGetPlayerIdByNickname = function(nick)
     local _, myid = sampGetPlayerIdByCharHandle(playerPed)
     if tostring(nick) == sampGetPlayerNickname(myid) then
@@ -5094,6 +5100,10 @@ function likerModule()
     sleep = os.clock() * 1000
   end
 
+  local process = function(data)
+    like_nicks = data
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
@@ -5101,10 +5111,11 @@ function likerModule()
     enable = enableAll,
     disable = disableAll,
     defaults = defaults,
-    like_nicks = like_nicks,
     onServerMessage = onServerMessage,
     onSendChat = onSendChat,
-    onSendCommand = onSendCommand
+    onSendCommand = onSendCommand,
+
+    process = process
   }
 end
 --------------------------------------------------------------------------------
