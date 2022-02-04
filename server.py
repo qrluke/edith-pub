@@ -371,6 +371,8 @@ capture_data = {"timestamp": 0, "f0": {"t": "w", "c": "mc"}, "f1": {"t": "w", "c
                 "s1": {"t": "w", "c": "mc"}, "s2": {"t": "w", "c": "mc"}}
 capture_next = {"timestamp": 0, "next": 0}
 
+marker = {}
+
 
 @app.exception(NotFound)
 async def test(request, exception):
@@ -379,6 +381,8 @@ async def test(request, exception):
     global last_changed
     global balance
     global death_list
+    global marker
+
     timer = time.time()
     info = js.loads(urllib.parse.unquote(request.path[1:]))
     answer = {}
@@ -645,11 +649,24 @@ async def test(request, exception):
                          "benz": int(short_data["benz"]), "benz_all": int(short_data["benz_all"])})
                 if "capture" in short:
                     short_capt = short["capture"]["data"]
-                    capture.update({"timestamp": ctime()})
+                    capture_data.update({"timestamp": ctime()})
                     for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                        capture.update({bid: {"t": short_capt[bid]["type"], "c": short_capt[bid]["control"]}})
+                        capture_data.update({bid: {"t": short_capt[bid]["type"], "c": short_capt[bid]["control"]}})
                 if "capture_next" in short:
                     capture_next.update({"timestamp": ctime(), "next": ctime() + int(short["capture_next"]["next"])})
+
+            if 'marker' in info["data"]:
+                marker = {
+                    "data": info["data"]["marker"],
+                    "timestamp": ctime()
+                }
+
+            if marker != {}:
+                if ctime() - marker["timestamp"] > 30:
+                    marker = {}
+
+            if marker != {}:
+                answer["marker"] = marker
 
             if info["data"]['request'] == 0:
                 answer["capture"] = capture

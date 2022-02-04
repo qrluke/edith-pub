@@ -43,6 +43,7 @@ encoding.default = 'CP1251'
 local u8 = encoding.UTF8
 
 local ffi = require 'ffi'
+local Vector3D = require "vector3d"
 
 local secrets = inicfg.load({ passwords = {} }, "edith.secrets")
 
@@ -74,6 +75,9 @@ end
 
 function onScriptTerminate(LuaScript, quitGame)
   if LuaScript == thisScript() then
+    if marker and marker.onScriptTerminate then
+      marker.onScriptTerminate()
+    end
     if not quitGame and settings then
       if first_instance_id == thisScript().id then
         if settings.test.reloadonterminate then
@@ -165,6 +169,7 @@ function main()
   deathlist = deathListModule()
   ganghelper = ganghelperModule()
   bikerinfo = bikerInfoModule()
+  marker = markerModule()
 
   iznanka = iznankaModule()
   doublejump = doubleJumpModule()
@@ -225,6 +230,7 @@ function main()
             deathlist = deathlist.defaults,
             ganghelper = ganghelper.defaults,
             bikerinfo = bikerinfo.defaults,
+            marker = marker.defaults,
 
             iznanka = iznanka.defaults,
             doublejump = doublejump.defaults,
@@ -307,6 +313,7 @@ function main()
   lua_thread.create(warnings.main)
   lua_thread.create(deathlist.main)
   lua_thread.create(ganghelper.main)
+  lua_thread.create(marker.main)
 
   lua_thread.create(iznanka.main)
   lua_thread.create(doublejump.main)
@@ -417,6 +424,8 @@ function main()
 
     bikerinfo.prepare(request_table)
 
+    marker.prepare(request_table)
+
     res_path = os.tmpname()
 
     request_table_final = { data = request_table, random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
@@ -448,6 +457,8 @@ function main()
           deathlist.process(info)
 
           capturetimer.process(info)
+
+          marker.process(info)
 
           panic = 0
         else
@@ -690,6 +701,7 @@ function updateMenu()
     deathlist.desc(),
     ganghelper.desc(),
     bikerinfo.desc(),
+    marker.desc(),
     "\n{AAAAAA}Модули таранта",
     iznanka.desc(),
     doublejump.desc(),
@@ -888,6 +900,7 @@ function updateMenu()
     deathlist.getMenu(),
     ganghelper.getMenu(),
     bikerinfo.getMenu(),
+    marker.getMenu(),
     {
       title = " "
     },
@@ -941,6 +954,7 @@ function updateMenu()
         deathlist.enable()
         ganghelper.enable()
         bikerinfo.enable()
+        marker.enable()
 
         iznanka.enable()
         doublejump.enable()
@@ -983,6 +997,7 @@ function updateMenu()
         deathlist.disable()
         ganghelper.disable()
         bikerinfo.disable()
+        marker.disable()
 
         iznanka.disable()
         doublejump.disable()
@@ -9602,6 +9617,210 @@ function bikerInfoModule()
 
     onServerMessage = onServerMessage,
     onShowDialog = onShowDialog
+  }
+end
+--------------------------------------------------------------------------------
+-------------------------------------MARKER-------------------------------------
+--------------------------------------------------------------------------------
+function markerModule()
+  local target = nil
+  local mark
+  local pick
+  local check
+  local result
+  local cur_x
+
+  local get_crosshair_position = function()
+    local vec_out = ffi.new("float[3]")
+    local tmp_vec = ffi.new("float[3]")
+    ffi.cast(
+            "void (__thiscall*)(void*, float, float, float, float, float*, float*)",
+            0x514970
+    )(
+            ffi.cast("void*", 0xB6F028),
+            15.0,
+            tmp_vec[0], tmp_vec[1], tmp_vec[2],
+            tmp_vec,
+            vec_out
+    )
+    return vec_out[0], vec_out[1], vec_out[2]
+  end
+
+  local clrMarker = function()
+    cur_x = 0
+    removeBlip(mark)
+    removePickup(pick)
+    deleteCheckpoint(check)
+  end
+
+  local setMarker = function(x, y, z)
+    clrMarker()
+    cur_x = x
+    result, pick = createPickup(19605, 19, x, y, z)
+    check = createCheckpoint(2, x, y, z, x, y, z, 1.5)
+    mark = addSpriteBlipForCoord(x, y, z, 56)
+    if settings.marker.sound then
+      addOneOffSound(0.0, 0.0, 0.0, 1052)
+    end
+  end
+
+  local setTarget = function(x, y, z)
+    target = {
+      x = x,
+      y = y,
+      z = z
+    }
+    clrMarker()
+    setMarker(x, y, z)
+  end
+
+  local mainThread = function()
+    while true do
+      wait(0)
+      if settings.marker.enable then
+        if isKeyDown(2) and isKeyJustPressed(settings.marker.key1) then
+          local sx, sy = convert3DCoordsToScreen(get_crosshair_position())
+          local posX, posY, posZ = convertScreenCoordsToWorld3D(sx, sy, 700.0)
+          local camX, camY, camZ = getActiveCameraCoordinates()
+          local result, colpoint = processLineOfSight(camX, camY, camZ, posX, posY, posZ, true, true, false, true, false, false, false)
+          if result and colpoint.entity ~= 0 then
+            local normal = colpoint.normal
+            local pos = Vector3D(colpoint.pos[1], colpoint.pos[2], colpoint.pos[3]) - (Vector3D(normal[1], normal[2], normal[3]) * 0.1)
+
+            setTarget(pos.x, pos.y, pos.z)
+          end
+        end
+      end
+    end
+  end
+
+  local changemarkerhotkey = function()
+    sampShowDialog(
+            989,
+            "Изменение горячей клавиши активации marker",
+            'Нажмите "Окей", после чего нажмите нужную клавишу.\nНастройки будут изменены.',
+            "Окей",
+            "Закрыть"
+    )
+    while sampIsDialogActive(989) do
+      wait(100)
+    end
+    local resultMain, buttonMain, typ = sampHasDialogRespond(989)
+    if buttonMain == 1 then
+      while ke1y == nil do
+        wait(0)
+        for i = 1, 200 do
+          if isKeyDown(i) then
+            settings.marker.key1 = i
+            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(settings.marker.key1), -1)
+            addOneOffSound(0.0, 0.0, 0.0, 1052)
+            inicfg.save(settings, "edith")
+            ke1y = 1
+            break
+          end
+        end
+      end
+      ke1y = nil
+    end
+  end
+
+  local getMenu = function()
+    return {
+      title = "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER {808080}[ALFA]",
+      submenu = {
+        {
+          title = "Информация о модуле",
+          onclick = function()
+            sampShowDialog(
+                    0,
+                    "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"MARKER"',
+                    "{00ff66}MARKER{ffffff}\nОтправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}.\nМетка только одна на сервер, пропадает через 30 секунд.\nМожно настроить звук когда она обновляется.",
+                    "Окей"
+            )
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Включить: " .. tostring(settings.marker.enable),
+          onclick = function()
+            settings.marker.enable = not settings.marker.enable
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Звук: " .. tostring(settings.marker.sound),
+          onclick = function()
+            settings.marker.sound = not settings.marker.sound
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "Изменить горячую клавишу",
+          onclick = function()
+            lua_thread.create(changemarkerhotkey)
+          end
+        }
+      }
+    }
+  end
+
+  local description = function()
+    return "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER - {ffffff}Отправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}."
+  end
+
+  local enableAll = function()
+    settings.marker.enable = true
+  end
+
+  local disableAll = function()
+    settings.marker.enable = false
+  end
+
+  local defaults = {
+    enable = true,
+    key1 = VK_3,
+    sound = true
+  }
+
+  local prepare = function(request_table)
+    if target ~= nil then
+      request_table["marker"] = target
+
+      target = nil
+    end
+  end
+
+  local process = function(ad)
+    if ad["marker"] then
+      if math.ceil(cur_x) ~= math.ceil(ad.marker.data.x) then
+        setMarker(ad.marker.data.x, ad.marker.data.y, ad.marker.data.z)
+      end
+    else
+      clrMarker()
+    end
+  end
+
+  local onScriptTerminate = function()
+    clrMarker()
+  end
+
+  return {
+    main = mainThread,
+    getMenu = getMenu,
+    desc = description,
+    enable = enableAll,
+    disable = disableAll,
+    defaults = defaults,
+
+    prepare = prepare,
+    process = process,
+
+    onScriptTerminate = onScriptTerminate
   }
 end
 --------------------------------------------------------------------------------
