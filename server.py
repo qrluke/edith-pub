@@ -9,6 +9,7 @@ import pandas as pd
 import re
 import sys
 import time
+import threading
 import urllib.parse
 from aiohttp import web
 from databases import Database
@@ -363,6 +364,13 @@ async def test(request):
 
 death_list = []
 
+warehouse = {"timestamp": 0, "warehouse": 0, "max": 200000}
+warehouse_rest = {"timestamp": 0, "heal": 0, "heal_max": 5000, "alk": 0, "alk_all": 0, "benz": 0, "benz_all": 0}
+capture = {"timestamp": 0, "f0": {"t": "w", "c": "mc"}, "f1": {"t": "w", "c": "mc"}, "f2": {"t": "w", "c": "mc"},
+           "f3": {"t": "w", "c": "mc"}, "f4": {"t": "w", "c": "mc"}, "s0": {"t": "w", "c": "mc"},
+           "s1": {"t": "w", "c": "mc"}, "s2": {"t": "w", "c": "mc"}}
+capture_next = {"timestamp": 0, "next": 0}
+
 
 @app.exception(NotFound)
 async def test(request, exception):
@@ -621,6 +629,28 @@ async def test(request, exception):
                             capture["type"] = info["data"]["timeleft_type"]
             if "getDeathList" in info["data"]:
                 answer["deathList"] = death_list
+
+            if 'bikerinfo' in info["data"]:
+                short = info["data"]["bikerinfo"]
+                if "warehouse_simple" in short:
+                    warehouse.update({"timestamp": ctime(), "warehouse": int(short["warehouse_simple"]["wh"])})
+
+                if "warehouse" in short:
+                    short_data = short["warehouse"]["data"]
+                    warehouse.update(
+                        {"timestamp": ctime(), "warehouse": int(short_data["wh"]), "max": int(short_data["wh_all"])})
+                    warehouse_rest.update(
+                        {"timestamp": ctime(), "heal": int(short_data["heal"]), "heal_max": int(short_data["heal_all"]),
+                         "alk": int(short_data["alk"]), "alk_all": int(short_data["alk_all"]),
+                         "benz": int(short_data["benz"]), "benz_all": int(short_data["benz_all"])})
+                if "capture" in short:
+                    short_capt = short["capture"]["data"]
+                    capture.update({"timestamp": ctime()})
+                    for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
+                        capture.update({bid: {"t": short_capt[bid]["type"], "c": short_capt[bid]["control"]}})
+                if "capture_next" in short:
+                    capture_next.update({"timestamp": ctime(), "next": ctime() + int(short["capture_next"]["next"])})
+
             if info["data"]['request'] == 0:
                 answer["capture"] = capture
                 answer["timestamp"] = time.time()
@@ -646,6 +676,104 @@ def startupCheck(PATH):
             db_file.write(js.dumps({}))
 
 
+def bikerinfo():
+    import dico
+
+    def unix2HM(unix):
+        return datetime.datetime.utcfromtimestamp(unix).astimezone(pytz.timezone("Europe/Moscow")).strftime("%H:%M")
+
+    def getCoolK(price):
+        price = int(price)
+        price = "%.1f" % (price / 1000)
+        return price.replace(".0", "") + "K"
+
+    api = dico.APIClient(os.environ["discord"], base=dico.HTTPRequest)
+
+    channels = {
+        "warehouse_guns": api.request_channel(os.environ["warehouse_guns"]),
+        "warehouse_all": api.request_channel(os.environ["warehouse_all"]),
+        "capture_next": api.request_channel(os.environ["capture_next"]),
+        "capture_info": api.request_channel(os.environ["capture_info"]),
+        "capture_emojis": api.request_channel(os.environ["capture_emojis"]),
+        "capture_status": api.request_channel(os.environ["capture_status"]),
+        "capture_letters": api.request_channel(os.environ["capture_letters"]),
+    }
+
+    last_info = {
+        "warehouse_guns": "",
+        "warehouse_all": "",
+        "capture_next": "",
+        "capture_info": "",
+        "capture_emojis": "",
+        "capture_status": "",
+        "capture_letters": "",
+    }
+
+    emojis = {"Hells Angels MC": "\U0001F170",
+              "Mongols MC": "\U0001F42D",
+              "Pagans MC": "\U0001F43C",
+              "Outlaws MC": "\U0001F414",
+              "Sons of Silence MC": "\U0001F409",
+              "Warlocks MC": "\U00002694",
+              "Highwaymen MC": "\U0001F6B5",
+              "Bandidos MC": "\U0001F171",
+              "Free Souls MC": "\U0001F921",
+              "Vagos MC": "\U0001F913",
+              "cur": "\U00002705"}
+
+    def set(key, name):
+        if name != last_info[key]:
+            print(channels[key].edit(name=name))
+            last_info[key] = name
+            time.sleep(15)
+
+    while True:
+        if warehouse["timestamp"] != 0:
+            string = f"\U0001F52B >> {getCoolK(warehouse['warehouse'])} << {unix2HM(warehouse['timestamp'])}"
+            set("warehouse_guns", string)
+        if warehouse_rest["timestamp"] != 0:
+            string = f"\U0001F37A{warehouse_rest['alk']}\U0001F37A—\U000026FD{getCoolK(warehouse_rest['benz'])}\U000026FD—{unix2HM(warehouse_rest['timestamp'])}"
+            set("warehouse_all", string)
+        if capture["timestamp"] != 0:
+            control = 0
+            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
+                if capture[bid]["c"] == os.environ["curb"]:
+                    control += 1
+            st_own = ""
+            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
+                st_own += capture[bid]["c"][0]
+                if bid != "s2":
+                    st_own += "—"
+            st_em = ""
+            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
+                st_em += emojis[capture[bid]["c"]]
+            st_st = ""
+            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
+                if capture[bid]["t"] == "r":
+                    st_st += "\U0001F534"
+                else:
+                    st_st += "\U000026AA"
+                    pass
+
+            string = f"/capture >> {control}/8 << {unix2HM(warehouse_rest['timestamp'])}"
+            set("capture_info", string)
+            print(st_em)
+            set("capture_emojis", st_em)
+            print(st_own)
+            set("capture_letters", st_own)
+            print(st_st)
+            set("capture_status", st_st)
+
+        if capture_next["timestamp"] != 0:
+            if capture_next["next"] > ctime():
+                string = f"next >> {unix2HM(capture_next['next'])}"
+                set("capture_next", string)
+            else:
+                string = f"next >> ??"
+                set("capture_next", string)
+        time.sleep(120)
+
+
 if __name__ == '__main__':
     database = Database('sqlite:///db/deathlist.db')
     asyncio.run(database.connect())
@@ -654,4 +782,15 @@ if __name__ == '__main__':
     with open("config/twinks.json", "r") as fp:
         twink = js.load(fp)
 
-    app.run(host='0.0.0.0', port=33333, debug=True)
+    with io.open('config/whitelist.txt') as file:
+        for line in file:
+            x = line.split()
+            if len(x) == 2:
+                users.update({x[0]: x[1]})
+
+    if str(os.environ["enable_discord"]) == "1":
+        test_thread = threading.Thread(target=bikerinfo)
+        test_thread.daemon = True
+        test_thread.start()
+
+    app.run(host='0.0.0.0', port=33333, auto_reload=True, debug=False)

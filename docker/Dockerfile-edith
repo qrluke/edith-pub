@@ -1,24 +1,24 @@
 FROM python:3.9.10-slim-buster
 
-EXPOSE 33333
+EXPOSE 46547
 
-RUN adduser sanic -system -group
+#RUN adduser sanic -system -group
 
 RUN mkdir sanic
 WORKDIR /sanic
 
 RUN mkdir db
-RUN chown sanic:sanic db
+#RUN chown sanic:sanic db
 
-USER sanic
+#USER sanic
 
 COPY requirements.txt .
 
 RUN pip3 install -r requirements.txt
 
-USER root
+#USER root
 RUN rm requirements.txt
-USER sanic
+#USER sanic
 
 COPY server.py .
 

@@ -9,7 +9,7 @@ RUN chown curl:curl /config
 
 WORKDIR /config
 
-USER curl
+#USER curl
 RUN touch whitelist.txt
 
 ENV DELAY_IN_SECONDS=40

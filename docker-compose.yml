@@ -10,14 +10,25 @@ services:
     restart: unless-stopped
     environment:
       DELAY: 250
+      enable_discord: 0 # 1 to enable bikerinfo
+      discord: "key"
+      # channel ids to rename
+      warehouse_guns: 0
+      warehouse_all: 0 
+      capture_next: 0
+      capture_emojis: 0
+      capture_info: 0
+      capture_status: 0
+      capture_letters: 0
+      # current club
+      curb: "Name MC"
     logging:
       options:
         max-size: '1m'
         max-file: '10'
       driver: json-file
     volumes:
-      - edith-pub_config:/sanic/config
-      - edith-pub_db:/sanic/db
+      - .:/sanic
   update-whitelist:
     build:
       context: .
@@ -32,7 +43,7 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - edith-pub_config:/config
+      - ./config:/config
   update-twinks:
     build:
       context: .
@@ -47,9 +58,4 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - edith-pub_config:/config
-volumes:
-  edith-pub_config:
-    name: edith-pub_config
-  edith-pub_db:
-    name: edith-pub_db
+      - ./config:/config

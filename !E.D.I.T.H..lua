@@ -683,7 +683,8 @@ function updateMenu()
     warnings.desc(),
     deathlist.desc(),
     ganghelper.desc(),
-    bikerinfo.desc() "\n{AAAAAA}Модули таранта",
+    bikerinfo.desc(),
+    "\n{AAAAAA}Модули таранта",
     iznanka.desc(),
     doublejump.desc(),
     adr.desc(),
@@ -9358,9 +9359,20 @@ end
 -----------------------------------BIKER-INFO-----------------------------------
 --------------------------------------------------------------------------------
 function bikerInfoModule()
-  local warehouse_simple = -1
-  local warehouse = {}
-  local capture = {}
+  local warehouse_simple
+  local warehouse
+  local capture
+  local next
+
+  local Set = function(list)
+    local set = {}
+    for _, l in ipairs(list) do
+      set[l] = true
+    end
+    return set
+  end
+
+  local skins_bikers = Set { 247, 248, 254, 100, 181, 178, 246 }
 
   local getMenu = function()
     return {
@@ -9432,20 +9444,132 @@ function bikerInfoModule()
 
   local prepare = function(request_table)
     request_table["bikerinfo"] = {}
+    if warehouse_simple ~= nil then
+      request_table["bikerinfo"]["warehouse_simple"] = warehouse_simple
+      warehouse_simple = nil
+    end
+
+    if warehouse ~= nil then
+      request_table["bikerinfo"]["warehouse"] = warehouse
+      warehouse = nil
+    end
+
+    if capture ~= nil then
+      request_table["bikerinfo"]["capture"] = capture
+      capture = nil
+    end
+
+    if next ~= nil then
+      request_table["bikerinfo"]["capture_next"] = next
+      next = nil
+    end
   end
 
   local onServerMessage = function(color, text)
     if settings.bikerinfo.enable then
-      if settings.bikerinfo.warehouse then
-        --
+      if settings.bikerinfo.bizlist then
+        if color == -1347440641 then
+          local nextH, nextM = string.match(text, " В данный момент начать войну не получится. Попробуйте повторить примерно через (%d+)%:(%d+)")
+          if nextH and nextM then
+            nextM = tonumber(nextM) + tonumber(nextH) * 60
+            next = {
+              timestamp = os.time(),
+              next = nextM * 60
+            }
+          end
+        end
       end
+
+      if settings.bikerinfo.warehouse then
+        local skin = getCharModel(playerPed)
+        if skin and skins_bikers[skin] then
+          if color == 1687547391 then
+            local wh = string.match(text, " На складе осталось (%d+) материалов")
+            if wh then
+              warehouse_simple = {
+                timestamp = os.time(),
+                wh = wh
+              }
+            end
+
+            local wh, wh_all, heal, heal_all, alk, alk_all, benz, benz_all = string.match(text, " (%d+)/(%d+) Матов | (%d+)/(%d+) Аптечек | (%d+)/(%d+) Алкоголя | (%d+)/(%d+) Бензина")
+            if wh_all then
+              warehouse = {
+                timestamp = os.time(),
+                data = {
+                  wh = wh,
+                  wh_all = wh_all,
+                  heal = heal,
+                  heal_all = heal_all,
+                  alk = alk,
+                  alk_all = alk_all,
+                  benz = benz,
+                  benz_all = benz_all
+                }
+              }
+            end
+          end
+        end
+      end
+    end
+  end
+
+  local getBizType = function(color)
+    if color == "C42100" then
+      return "r"
+    else
+      return "w"
     end
   end
 
   local onShowDialog = function(dialog, style, title, button1, button2, text)
     if settings.bikerinfo.enable then
       if settings.bikerinfo.bizlist then
-        --
+        local skin = getCharModel(playerPed)
+        if skin and skins_bikers[skin] then
+          if button1 == "Атаковать" and title == "Выберите объект" then
+            local s1, b1, s2, b2, s3, b3, s4, b4, s5, b5, s6, b6, s7, b7, s8, b8 = string.match(text, "{(.+)}Ферма №0 %[(.+)%]\n{(.+)}Ферма №1 %[(.+)%]\n{(.+)}Ферма №2 %[(.+)%]\n{(.+)}Ферма №3 %[(.+)%]\n{(.+)}Ферма №4 %[(.+)%]\n{(.+)}Мастерская №0 %[(.+)%]\n{(.+)}Мастерская №1 %[(.+)%]\n{(.+)}Мастерская №2 %[(.+)%]")
+            if s1 then
+              capture = {
+                timestamp = os.time(),
+                data = {
+                  f0 = {
+                    type = getBizType(s1),
+                    control = b1
+                  },
+                  f1 = {
+                    type = getBizType(s2),
+                    control = b2
+                  },
+                  f2 = {
+                    type = getBizType(s3),
+                    control = b3
+                  },
+                  f3 = {
+                    type = getBizType(s4),
+                    control = b4
+                  },
+                  f4 = {
+                    type = getBizType(s5),
+                    control = b5
+                  },
+                  s0 = {
+                    type = getBizType(s6),
+                    control = b6
+                  },
+                  s1 = {
+                    type = getBizType(s7),
+                    control = b7
+                  },
+                  s2 = {
+                    type = getBizType(s8),
+                    control = b8
+                  },
+                }
+              }
+            end
+          end
+        end
       end
     end
   end
