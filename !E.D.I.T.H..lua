@@ -2158,7 +2158,7 @@ function capturetimerModule()
 
   local mainThread = function()
     while true do
-      wait(250)
+      wait(1000)
       if settings.capturetimer.enable then
         if os.time() - checkafk > 2 then
           wasafk = true
@@ -2691,7 +2691,7 @@ function scoreModule()
       local x = lua_thread.create(monitor)
 
       while true do
-        wait(100)
+        wait(700)
         if isKeyDown(settings.score.key1) and sampIsDialogActive() == false and sampIsChatInputActive() == false and isPauseMenuActive() == false then
           if mode then
             sampTextdrawSetString(440, string.format("%2.1f", settings.stats.dmg))
