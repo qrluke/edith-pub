@@ -379,6 +379,7 @@ function main()
   local request_table_final = 0
   local handler = 0
 
+  local panic = 0
   while true do
     wait(transponder_delay)
 
@@ -447,6 +448,8 @@ function main()
           deathlist.process(info)
 
           capturetimer.process(info)
+
+          panic = 0
         else
           if settings.welcome.show then
             sampAddChatMessage(
@@ -475,16 +478,19 @@ function main()
         thisScript():unload()
       end
     else
-      if settings.welcome.show then
-        sampAddChatMessage(
-                "{348cb2}[EDITH]: {ff0000}Что-то: ответ от сервера не сохранился в файл. Попробуйте перезапустить скрипт: CTRL + R.",
-                0xff0000
-        )
-      end
-      do_not_reload = true
-      print("unload")
+      panic = panic + 1
+      if panic > 3 then
+        if settings.welcome.show then
+          sampAddChatMessage(
+                  "{348cb2}[EDITH]: {ff0000}Что-то: ответ от сервера не сохранился в файл. Попробуйте перезапустить скрипт: CTRL + R.",
+                  0xff0000
+          )
+        end
+        do_not_reload = true
+        print("unload")
 
-      thisScript():unload()
+        thisScript():unload()
+      end
     end
   end
 end
