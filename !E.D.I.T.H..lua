@@ -9681,6 +9681,7 @@ function markerModule()
       wait(0)
       if settings.marker.enable then
         if isKeyDown(2) and isKeyJustPressed(settings.marker.keyDel) then
+          remove_target = true
           clrMarker()
         end
         if isKeyDown(2) and isKeyJustPressed(settings.marker.key1) then
