@@ -664,6 +664,8 @@ async def test(request, exception):
             if marker != {}:
                 if ctime() - marker["timestamp"] > 30:
                     marker = {}
+                elif "marker_remove" in info["data"]:
+                    marker = {}
 
             if marker != {}:
                 answer["marker"] = marker

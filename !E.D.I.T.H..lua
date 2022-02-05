@@ -9625,6 +9625,7 @@ end
 --------------------------------------------------------------------------------
 function markerModule()
   local target = nil
+  local remove_target = false
   local mark
   local pick
   local check
@@ -9679,6 +9680,9 @@ function markerModule()
     while true do
       wait(0)
       if settings.marker.enable then
+        if isKeyDown(2) and isKeyJustPressed(settings.marker.keyDel) then
+          clrMarker()
+        end
         if isKeyDown(2) and isKeyJustPressed(settings.marker.key1) then
           local sx, sy = convert3DCoordsToScreen(get_crosshair_position())
           local posX, posY, posZ = convertScreenCoordsToWorld3D(sx, sy, 700.0)
@@ -9695,10 +9699,10 @@ function markerModule()
     end
   end
 
-  local changemarkerhotkey = function()
+  local changemarkerhotkey = function(mode)
     sampShowDialog(
             989,
-            "Изменение горячей клавиши активации marker",
+            "Изменение горячей клавиши активации marker или деактивации",
             'Нажмите "Окей", после чего нажмите нужную клавишу.\nНастройки будут изменены.',
             "Окей",
             "Закрыть"
@@ -9712,8 +9716,12 @@ function markerModule()
         wait(0)
         for i = 1, 200 do
           if isKeyDown(i) then
-            settings.marker.key1 = i
-            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(settings.marker.key1), -1)
+            if mode == 1 then
+              settings.marker.key1 = i
+            elseif mode == 2 then
+              settings.marker.keyDel = i
+            end
+            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(i), -1)
             addOneOffSound(0.0, 0.0, 0.0, 1052)
             inicfg.save(settings, "edith")
             ke1y = 1
@@ -9735,7 +9743,7 @@ function markerModule()
             sampShowDialog(
                     0,
                     "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"MARKER"',
-                    "{00ff66}MARKER{ffffff}\nОтправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}.\nМетка только одна на сервер, пропадает через 30 секунд.\nМожно настроить звук когда она обновляется.",
+                    "{00ff66}MARKER{ffffff}\nОтправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}.\nПрицел + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.keyDel)) .. "{ffffff} - убрать метку.\nМетка только одна на сервер, пропадает через 30 секунд.\nМожно настроить звук когда она обновляется.",
                     "Окей"
             )
           end
@@ -9764,17 +9772,23 @@ function markerModule()
           end
         },
         {
-          title = "Изменить горячую клавишу",
+          title = "Изменить горячую клавишу активации",
           onclick = function()
-            lua_thread.create(changemarkerhotkey)
+            lua_thread.create(changemarkerhotkey, 1)
           end
-        }
+        },
+        {
+          title = "Изменить горячую клавишу деактивации",
+          onclick = function()
+            lua_thread.create(changemarkerhotkey, 2)
+          end
+        },
       }
     }
   end
 
   local description = function()
-    return "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER - {ffffff}Отправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}."
+    return "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER - {ffffff}Отправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}. Прицел + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.keyDel)) .. " - убрать."
   end
 
   local enableAll = function()
@@ -9788,6 +9802,7 @@ function markerModule()
   local defaults = {
     enable = true,
     key1 = VK_3,
+    keyDel = VK_4,
     sound = true
   }
 
@@ -9797,6 +9812,10 @@ function markerModule()
         request_table["marker"] = target
 
         target = nil
+      elseif remove_target then
+        request_table["marker_remove"] = true
+
+        remove_target = false
       end
     end
   end
