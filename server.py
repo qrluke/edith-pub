@@ -613,7 +613,13 @@ async def test(request, exception):
                 if "time" not in capture:
                     capture["time"] = time.time()
                     capture["type"] = info["data"]["timeleft_type"]
+
+                    if capture["type"] == 0:
+                        if capture_next["next"] < ctime():
+                            capture_next["next"] = ctime() + 7200
+                            capture_next["timestamp"] = ctime()
                 else:
+                    # wtf is this?
                     if capture["type"] == info["data"]["timeleft_type"]:
                         if capture["type"] == 25:
                             if time.time() - capture["time"] > 3600:
@@ -751,7 +757,7 @@ def bikerinfo():
             string = f"\U0001F52B >> {getCoolK(warehouse['warehouse'])} << {unix2HM(warehouse['timestamp'])}"
             set("warehouse_guns", string)
         if warehouse_rest["timestamp"] != 0:
-            string = f"\U0001F37A{warehouse_rest['alk']}\U0001F37A—\U000026FD{getCoolK(warehouse_rest['benz'])}\U000026FD—{unix2HM(warehouse_rest['timestamp'])}"
+            string = f"\U0001F37A{warehouse_rest['alk']}\U0001F37A—\U000026FD{getCoolK(warehouse_rest['benz'])}\U000026FD— {unix2HM(warehouse_rest['timestamp'])}"
             set("warehouse_all", string)
         if capture_data["timestamp"] != 0:
             control = 0
@@ -774,7 +780,7 @@ def bikerinfo():
                     st_st += "\U000026AA"
                     pass
 
-            string = f"/capture >> {control}/8 << {unix2HM(warehouse_rest['timestamp'])}"
+            string = f"/capture >> {control}/8 << {unix2HM(capture_data['timestamp'])}"
             set("capture_info", string)
             print(st_em)
             set("capture_emojis", st_em)
@@ -783,14 +789,29 @@ def bikerinfo():
             print(st_st)
             set("capture_status", st_st)
 
-        if capture_next["timestamp"] != 0:
-            if capture_next["next"] > ctime():
-                string = f"next >> {unix2HM(capture_next['next'])}"
-                set("capture_next", string)
+        if capture_next["timestamp"] != 0 and capture_next["next"] > ctime():
+            string = f"next >> {unix2HM(capture_next['next'])}"
+            set("capture_next", string)
+        else:
+            if "type" in capture:
+                timeleft = capture["time"] + 60 * capture["type"] - ctime()
+                if timeleft > 0:
+                    if capture["type"] == 25:
+                        string = f"\U0001F624 начало ч. {int((ctime()-capture['time'])/60)}м << {unix2HM(ctime())}"
+                        set("capture_next", string)
+                    elif capture['type'] == 10:
+                        string = f"\U0001F621 конец ч. {int((ctime()-capture['time'])/60)}м << {unix2HM(ctime())}"
+                        set("capture_next", string)
+                    else:
+                        string = f"\U0001F92C пот ост. {int((ctime()-capture['time'])/60)}м << {unix2HM(ctime())}"
+                        set("capture_next", string)
+                else:
+                    string = f"next >> ??"
+                    set("capture_next", string)
             else:
                 string = f"next >> ??"
                 set("capture_next", string)
-        time.sleep(120)
+        time.sleep(80)
 
 
 if __name__ == '__main__':
