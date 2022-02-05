@@ -2169,6 +2169,7 @@ function capturetimerModule()
   local wasafk = false
   local sendtype = 0
   local timeleft_type = 0
+  local timeleft_base
   local sleep = 0
 
   local antiFlood = function()
