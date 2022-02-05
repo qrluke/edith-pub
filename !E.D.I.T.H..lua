@@ -9628,7 +9628,7 @@ function markerModule()
   local pick
   local check
   local result
-  local cur_x
+  local cur_x = 0
 
   local get_crosshair_position = function()
     local vec_out = ffi.new("float[3]")
