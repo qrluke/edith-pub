@@ -9803,7 +9803,7 @@ function markerModule()
   local process = function(ad)
     if settings.marker.enable then
       if ad["marker"] then
-        if math.ceil(cur_x) ~= math.ceil(ad.marker.data.x) then
+        if math.ceil(cur_x) ~= math.ceil(ad.marker.data.x) and target == nil then
           setMarker(ad.marker.data.x, ad.marker.data.y, ad.marker.data.z)
         end
       else
