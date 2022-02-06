@@ -1031,6 +1031,7 @@ end
 function glonassModule()
   local matavoz, player, font, font4, font10, font12, font14, font16, font20, font24, resX, resY, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m1k, m2k, m3k, m4k, m5k, m6k, m7k, m8k, m9k, m10k, m11k, m12k, m13k, m14k, m15k, m16k = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
   local target = { x = 0, y = 0, z = 0, time = 0 }
+  local marker = 0
   local x, y = 0, 0
 
   local mapmode = 1
@@ -1413,6 +1414,9 @@ function glonassModule()
             end
           end
         end
+        if settings.marker and settings.marker.enable and k == "marker" and v.data then
+          renderDrawTexture(marker, getX(v.data.x), getY(v.data.y), iconsize * 2, iconsize * 2, 0, -1)
+        end
       end
     end
   end
@@ -1529,6 +1533,7 @@ function glonassModule()
 
     matavoz = renderLoadTextureFromFile(getGameDirectory() .. "/moonloader/resource/edith/matavoz.png")
     player = renderLoadTextureFromFile(getGameDirectory() .. "/moonloader/resource/edith/pla.png")
+    marker = renderLoadTextureFromFile(getGameDirectory() .. "/moonloader/resource/edith/marker.png")
 
     font = renderCreateFont("Impact", 8, 4)
     font4 = renderCreateFont("Impact", 4, 4)
@@ -1981,6 +1986,9 @@ function glonassModule()
   local process = function(response)
     data['nicks'] = response['nicks']
     data['timestamp'] = response['timestamp']
+    if settings.marker and settings.marker.enable then
+      data["marker"] = response["marker"]
+    end
   end
 
   local onSetMapIcon = function(iconId, position, type, color, style)
