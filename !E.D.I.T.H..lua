@@ -1983,6 +1983,17 @@ function glonassModule()
     data['timestamp'] = response['timestamp']
   end
 
+  local onSetMapIcon = function(iconId, position, type, color, style)
+    if settings.map.truck then
+      if type == 51 then
+        target = { x = position.x, y = position.y, z = position.z, time = os.clock() }
+        if settings.map.truck_sound then
+          addOneOffSound(0.0, 0.0, 0.0, 1052)
+        end
+      end
+    end
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
@@ -1991,7 +2002,8 @@ function glonassModule()
     disable = disableAll,
     defaults = defaults,
     prepare = prepare,
-    process = process
+    process = process,
+    onSetMapIcon = onSetMapIcon
   }
 end
 --------------------------------------------------------------------------------
@@ -3485,17 +3497,6 @@ function heistbeepModule()
     end
   end
 
-  local onSetMapIcon = function(iconId, position, type, color, style)
-    if settings.map.truck then
-      if type == 51 then
-        target = { x = position.x, y = position.y, z = position.z, time = os.clock() }
-        if settings.map.truck_sound then
-          addOneOffSound(0.0, 0.0, 0.0, 1052)
-        end
-      end
-    end
-  end
-
   local onSendPickedUpPickup = function(id)
     if settings.heist.enable and hooked_pickup ~= 0 then
       if id == hooked_pickup then
@@ -3519,7 +3520,6 @@ function heistbeepModule()
     disable = disableAll,
     defaults = defaults,
     onCreatePickup = onCreatePickup,
-    onSetMapIcon = onSetMapIcon,
     onSendPickedUpPickup = onSendPickedUpPickup
   }
 end
@@ -10012,13 +10012,6 @@ function onSendTakeDamage(playerID, damage, weaponID, bodypart)
   end
 end
 
-function onSetMapIcon(iconId, position, type, color, style)
-  local res = processEvent(heistbeep.onSetMapIcon, table.pack(iconId, position, type, color, style))
-  if res then
-    return table.unpack(res)
-  end
-end
-
 function onSendCommand(cmd)
   local res = processEvent(warnings.onSendCommand, table.pack(cmd))
   if res then
@@ -10133,7 +10126,7 @@ function onCreatePickup(id, model, pickuptype, position)
 end
 
 function onSetMapIcon(iconId, position, type, color, style)
-  local res = processEvent(heistbeep.onSetMapIcon, table.pack(id, model, pickuptype, position))
+  local res = processEvent(glonass.onSetMapIcon, table.pack(iconId, position, type, color, style))
   if res then
     return table.unpack(res)
   end
