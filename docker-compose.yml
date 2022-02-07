@@ -10,8 +10,8 @@ services:
     restart: unless-stopped
     environment:
       DELAY: 250
-      enable_discord: 0 # 1 to enable bikerinfo
-      discord: "key"
+      # enable bikerinfo
+      enable_bikerinfo: 0
       # channel ids to rename
       warehouse_guns: 0
       warehouse_all: 0 
@@ -20,7 +20,13 @@ services:
       capture_info: 0
       capture_status: 0
       capture_letters: 0
-      # current club
+      # enable captureinfo
+      enable_captureinfo: 0
+      # channel id to send notifications to
+      capture_channel: 0
+      # discord bot api key for bikerinfo & captureinfo
+      discord: "key"
+      # current club, used for bikerinfo & captureinfo
       curb: "Name MC"
     logging:
       options:
