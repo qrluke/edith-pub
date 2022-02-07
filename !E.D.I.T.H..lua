@@ -2185,9 +2185,11 @@ end
 --------------------------------------------------------------------------------
 function capturetimerModule()
   local waitforcapture = false
+  local waitfordraw = false
   local checkafk = os.time()
   local wasafk = false
   local sendtype = 0
+  local senddraw = {}
   local timeleft_type = 0
   local timeleft_base
   local sleep = 0
@@ -2310,7 +2312,7 @@ function capturetimerModule()
   end
 
   local onServerMessage = function(color, text)
-    if string.find(text, "ачало через 15 минут") then
+    if string.find(text, "ачало через 15 минут") and string.find(text, "войн") then
       if not wasafk then
         waitforcapture = true
         sendtype = 25
@@ -2331,7 +2333,7 @@ function capturetimerModule()
       end
     end
 
-    if text == " Ваш клуб выиграл!" then
+    if text:find(" Ваш клуб выиграл!") then
       lua_thread.create(
               function()
                 if settings.capturetimer.enable and settings.capturetimer.clistoff then
@@ -2342,10 +2344,10 @@ function capturetimerModule()
       )
       if not wasafk then
         waitforcapture = true
-        sendtype = 0
+        sendtype = -1
       end
     end
-    if text == " Ваш клуб проиграл!" then
+    if text:find(" Ваш клуб проиграл!") then
       lua_thread.create(
               function()
                 if settings.capturetimer.enable and settings.capturetimer.clistoff then
@@ -2356,7 +2358,7 @@ function capturetimerModule()
       )
       if not wasafk then
         waitforcapture = true
-        sendtype = 0
+        sendtype = -2
       end
     end
   end
@@ -2374,6 +2376,10 @@ function capturetimerModule()
       request_table["timeleft_type"] = sendtype
       waitforcapture = false
     end
+    if waitfordraw then
+      request_table["textdraw"] = senddraw
+      waitfordraw = false
+    end
   end
 
   local process = function(ad)
@@ -2390,6 +2396,34 @@ function capturetimerModule()
     clistoff = true,
   }
 
+  local onShowTextDraw = function(id, tab)
+    if not wasafk then
+      if tab.text:find("~y~KILLS~n~") then
+        senddraw = {}
+        senddraw.type = "new"
+        senddraw.text = tab.text
+        waitfordraw = true
+        --print(tab.text)
+        --~n~~g~Rifa: ~w~0~n~~r~Aztec: ~w~1
+        --task send to server to initiate capture w/o timing
+      end
+    end
+  end
+
+  local onTextDrawSetString = function(id, str)
+    if not wasafk then
+      if str:find("~y~KILLS~n~") then
+        senddraw = {}
+        senddraw.type = "upd"
+        senddraw.text = str
+        waitfordraw = true
+        --print(str)
+        --~n~~g~Rifa: ~w~0~n~~r~Aztec: ~w~1
+        --task send to server
+      end
+    end
+  end
+
   return {
     main = mainThread,
     getMenu = getMenu,
@@ -2400,6 +2434,10 @@ function capturetimerModule()
     onServerMessage = onServerMessage,
     onSendChat = onSendChat,
     onSendCommand = onSendCommand,
+
+    onShowTextDraw = onShowTextDraw,
+    onTextDrawSetString = onTextDrawSetString,
+
     prepare = prepare,
     process = process
   }
@@ -10277,6 +10315,18 @@ function onShowTextDraw(id, tab)
   if res then
     return table.unpack(res)
   end
+
+  local res = processEvent(capturetimer.onShowTextDraw, table.pack(id, tab))
+  if res then
+    return table.unpack(res)
+  end
+end
+
+function onTextDrawSetString(id, text)
+  local res = processEvent(capturetimer.onTextDrawSetString, table.pack(id, text))
+  if res then
+    return table.unpack(res)
+  end
 end
 
 function onTextDrawHide(id)
@@ -10327,6 +10377,7 @@ function enableEvents()
   sampev.onGangZoneFlash = onGangZoneFlash
   sampev.onGangZoneStopFlash = onGangZoneStopFlash
   sampev.onTextDrawHide = onTextDrawHide
+  sampev.onTextDrawSetString = onTextDrawSetString
 end
 --------------------------------------------------------------------------------
 -------------------------------------UPDATE-------------------------------------

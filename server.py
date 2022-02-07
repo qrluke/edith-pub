@@ -372,6 +372,16 @@ capture_data = {"timestamp": 0, "f0": {"t": "w", "c": "mc"}, "f1": {"t": "w", "c
 capture_next = {"timestamp": 0, "next": 0}
 
 marker = {}
+bikers = {}
+
+textdraw = {}
+textdraw["attacker"] = "Free Souls MC"
+textdraw["attacker_kills"] = -1
+textdraw["defender"] = "Mongols MC"
+textdraw["defender_kills"] = -1
+textdraw["capture_id"] = -1
+
+bikers_textdraw = r"~y~KILLS~n~ ~n~~r~(.+): ~w~(\d+)~n~~b~(.+): ~w~(\d+)~n~~b~~h~ID\((\d)\)"
 
 
 @app.exception(NotFound)
@@ -382,6 +392,8 @@ async def test(request, exception):
     global balance
     global death_list
     global marker
+    global bikers
+    global textdraw
 
     timer = time.time()
     info = js.loads(urllib.parse.unquote(request.path[1:]))
@@ -637,6 +649,16 @@ async def test(request, exception):
                         if time.time() - capture["time"] > 60:
                             capture["time"] = time.time()
                             capture["type"] = info["data"]["timeleft_type"]
+
+            if "textdraw" in info["data"]:
+                if info["data"]["textdraw"]["text"].find(os.environ["curb"]) != -1:
+                    td = re.match(bikers_textdraw, info["data"]["textdraw"]["text"])
+                    textdraw["attacker"] = td[1]
+                    textdraw["attacker_kills"] = int(td[2])
+                    textdraw["defender"] = td[3]
+                    textdraw["defender_kills"] = int(td[4])
+                    textdraw["capture_id"] = int(td[5])
+
             if "getDeathList" in info["data"]:
                 answer["deathList"] = death_list
 
@@ -676,11 +698,16 @@ async def test(request, exception):
             if marker != {}:
                 answer["marker"] = marker
 
+            if "bikers" in info["data"]:
+                bikers = info["data"]["bikers"]
+
+            answer["capture"] = capture
+            if "type" in answer["capture"]:
+                if answer["capture"]["type"] <= 0:
+                    answer["capture"]["type"] = 0
             if info["data"]['request'] == 0:
-                answer["capture"] = capture
                 answer["timestamp"] = time.time()
             elif info["data"]['request'] == 1:
-                answer["capture"] = capture
                 answer["timestamp"] = time.time()
                 answer["nicks"] = nicks
                 answer["vehicles"] = vehicles
@@ -750,7 +777,7 @@ def bikerinfo():
         if name != last_info[key]:
             print(channels[key].edit(name=name))
             last_info[key] = name
-            time.sleep(15)
+            time.sleep(45)
 
     while True:
         if warehouse["timestamp"] != 0:
@@ -782,11 +809,8 @@ def bikerinfo():
 
             string = f"/capture >> {control}/8 << {unix2HM(capture_data['timestamp'])}"
             set("capture_info", string)
-            print(st_em)
             set("capture_emojis", st_em)
-            print(st_own)
             set("capture_letters", st_own)
-            print(st_st)
             set("capture_status", st_st)
 
         if capture_next["timestamp"] != 0 and capture_next["next"] > ctime():
@@ -811,7 +835,110 @@ def bikerinfo():
             else:
                 string = f"next >> ??"
                 set("capture_next", string)
-        time.sleep(80)
+        time.sleep(100)
+
+
+def captureinfo():
+    import dico
+    import yaml
+
+    class MyDumper(yaml.Dumper):
+        def increase_indent(self, flow=False, indentless=False):
+            return super(MyDumper, self).increase_indent(flow, False)
+
+    def getDateMoscow(unix):
+        return datetime.datetime.utcfromtimestamp(unix).astimezone(pytz.timezone("Europe/Moscow")).strftime(
+            "%Y-%m-%d %H:%M:%S")
+
+    class capt:
+        def __init__(self, api, channel, started, reason):
+            self.api = api
+            self.time = time.time()
+            self.chn = channel
+            self.str = "ПОДНЯТЬ ЩИТЫ"
+            self.ids = ["LV", "SF", "LS", "NEW SF", "xz"]
+            self.started = started
+            self.started_reason = reason
+            self.msg = api.create_message(self.chn, content=self.str).id
+            self.pred_bikers = {}
+            self.update()
+
+        def genCaptureYaml(self, bikers):
+            foo = {
+                "id": self.ids[textdraw["capture_id"]],
+                "explain": {
+                    "started": getDateMoscow(self.started),
+                    "reason": self.started_reason,
+                },
+                "status": {
+                    "status": getStatus(),
+                    "timing": str(
+                        datetime.timedelta(seconds=int(capture["time"] + capture["type"] * 60 + 5 - time.time()))),
+                    "end": getDateMoscow(capture["time"] + capture["type"] * 60 + 5),
+                },
+                "timing": time.time(),
+                "players": {
+                    "attackers": {
+                        "count": 0,
+                        "name": textdraw["attacker"],
+                        "kills": textdraw["attacker_kills"],
+                        "list": []
+                    },
+                    "defenders": {
+                        "count": 0,
+                        "name": textdraw["defender"],
+                        "kills": textdraw["defender_kills"],
+                        "list": []
+                    }
+                }
+            }
+
+            if getStatus() == "end" or getStatus() == "unknown":
+                del foo["status"]["timing"]
+
+            if capture["type"] == -1:
+                foo["status"]["status"] = "WIN"
+            elif capture["type"] == -2:
+                foo["status"]["status"] = "LOSE"
+
+            for key in bikers.keys():
+                for index in sorted(list(dict(bikers[key]).keys()), key=lambda x: int(x)):
+                    foo["players"][key]["list"].append(bikers[key][index])
+                foo["players"][key]["count"] = len(foo["players"][key]["list"])
+
+            return f"```yaml\n{yaml.dump(foo, Dumper=MyDumper, sort_keys=False)}```"
+
+        def update(self):
+            if getStatus() == "active":
+                to_send = self.genCaptureYaml(bikers)
+                if self.str != to_send:
+                    self.str = to_send
+                    api.edit_message(self.chn, self.msg, content=self.str)
+                self.pred_bikers = bikers
+            else:
+                api.edit_message(self.chn, self.msg, content=self.genCaptureYaml(self.pred_bikers))
+
+    def getStatus():
+        if capture["type"] <= 0:
+            return "end"
+        if capture["time"] + capture["type"] * 60 + 15 > time.time():
+            return "active"
+        else:
+            return "unknown"
+
+    api = dico.APIClient(os.environ["discord"], base=dico.HTTPRequest)
+    cur_capt = None
+    while True:
+        if 'cur_capt' in locals() and cur_capt:
+            cur_capt.update()
+            if getStatus() == "end" or getStatus() == "unknown":
+                del cur_capt
+        else:
+            if "type" in capture and capture["type"] in [25, 10, 2] and capture["time"] + capture[
+                "type"] * 60 + 25 > time.time():
+                cur_capt = capt(api, os.environ["capture_channel"], capture["time"], str(capture["type"]))
+
+        time.sleep(1)
 
 
 if __name__ == '__main__':
@@ -828,9 +955,14 @@ if __name__ == '__main__':
             if len(x) == 2:
                 users.update({x[0]: x[1]})
 
-    if str(os.environ["enable_discord"]) == "1":
-        test_thread = threading.Thread(target=bikerinfo)
-        test_thread.daemon = True
-        test_thread.start()
+    if str(os.environ["enable_bikerinfo"]) == "1":
+        bikerinfo_thread = threading.Thread(target=bikerinfo)
+        bikerinfo_thread.daemon = True
+        bikerinfo_thread.start()
+
+    if str(os.environ["enable_captureinfo"]) == "1":
+        captureinfo_thread = threading.Thread(target=captureinfo)
+        captureinfo_thread.daemon = True
+        captureinfo_thread.start()
 
     app.run(host='0.0.0.0', port=33333, auto_reload=True, debug=False)
