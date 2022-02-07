@@ -797,13 +797,13 @@ def bikerinfo():
                 timeleft = capture["time"] + 60 * capture["type"] - ctime()
                 if timeleft > 0:
                     if capture["type"] == 25:
-                        string = f"\U0001F624 начало ч. {int((ctime()-capture['time'])/60)}м << {unix2HM(ctime())}"
+                        string = f"\U0001F624 начало ч. {15 - int((ctime() - capture['time']) / 60)}м << {unix2HM(ctime())}"
                         set("capture_next", string)
                     elif capture['type'] == 10:
-                        string = f"\U0001F621 конец ч. {int((ctime()-capture['time'])/60)}м << {unix2HM(ctime())}"
+                        string = f"\U0001F621 конец ч. {10 - int((ctime() - capture['time']) / 60)}м << {unix2HM(ctime())}"
                         set("capture_next", string)
                     else:
-                        string = f"\U0001F92C пот ост. {int((ctime()-capture['time'])/60)}м << {unix2HM(ctime())}"
+                        string = f"\U0001F92C пот ост. {2 - int((ctime() - capture['time']) / 60)}м << {unix2HM(ctime())}"
                         set("capture_next", string)
                 else:
                     string = f"next >> ??"
