@@ -2195,7 +2195,9 @@ function capturetimerModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local mainThread = function()
@@ -2315,7 +2317,7 @@ function capturetimerModule()
       end
     end
 
-    if string.find(text, "ойна началась") then
+    if text == " Война началась! Победит тот, кто прогонит врага из зоны, или убьет больше человек" then
       if not wasafk then
         waitforcapture = true
         sendtype = 10
@@ -3254,7 +3256,9 @@ function cipherModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local encode = function(str)
@@ -3684,7 +3688,9 @@ function struckModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local getMenu = function()
@@ -4437,11 +4443,15 @@ end
 function rcaptureModule()
   local auf_count = 0
   local sleep = 0
+
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
+
   local mainThread = function()
     if settings.rcapture.active then
       sampShowDialog(1131231, "автокапт после рестарта", "RCAPTURE был отменен.\nПароль и бизнес стерты.", "Понял")
@@ -5009,7 +5019,9 @@ function likerModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local sampGetPlayerIdByNickname = function(nick)
@@ -5486,7 +5498,9 @@ function storojModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local createWkav = function()
@@ -6062,7 +6076,9 @@ function drugsmatsModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local rubin_drugs_mats_GetMats = function()
@@ -6658,7 +6674,9 @@ function iznankaModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local mainThread = function()
@@ -6873,7 +6891,9 @@ function healmeModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local mainThread = function()
@@ -7119,7 +7139,9 @@ function parashuteModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 600 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 600 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local mainThread = function()
@@ -7287,7 +7309,9 @@ function vspiwkaModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local mainThread = function()
@@ -7443,7 +7467,9 @@ function warningsModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 1200 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local mainThread = function()
@@ -9222,7 +9248,9 @@ function ganghelperModule()
   local antiFlood = function()
     repeat
       wait(100)
-    until math.ceil(os.clock() * 1000 - sleep) > 600 and not sampIsDialogActive() and not sampIsChatInputActive()
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 600 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
   end
 
   local isBandit = function()
