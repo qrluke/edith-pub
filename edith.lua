@@ -6644,8 +6644,8 @@ function drugsmatsModule()
       if message:find('Не флуди!') and check_inventory == 2 then
         table.insert(tempThreads, lua_thread.create(rubin_drugs_mats_GetMats))
       end
-      if message:find('Вы купили %d+ грамм наркотиков за %d+ вирт %(У вас есть (%d+) грамм%)') then
-        ini[inikeys].drugs = message:match('Вы купили %d+ грамм наркотиков за %d+ вирт %(У вас есть (%d+) грамм%)')
+      if message:find('Вы купили %d+ грамм за %d+ вирт %(У вас есть (%d+) грамм%)') then
+        ini[inikeys].drugs = message:match('Вы купили %d+ грамм за %d+ вирт %(У вас есть (%d+) грамм%)')
         inicfg.save(ini, "edith-drugs-mats")
       end
       if message:find(' %d+ грамм наркотических лекарств') then
