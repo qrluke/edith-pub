@@ -1,8 +1,3 @@
---[[
-  ЕСЛИ СКРИПТ КРАШИТ С ОШИБКОЙ cannot resume non-suspended coroutine:
-  - /edith -> СБОРЩИК МУСОРА -> ОТКЛЮЧИТЬ СБОРЩИК МУСОРА
-]]
-
 script_name("E.D.I.T.H.")
 script_author("qrlk") --большая часть модулей самописная, часть взята из доработанных мной сторонних скриптов
 script_version("09.02.2022-stable")
@@ -250,14 +245,7 @@ function main()
               sound = true
             },
             gc = {
-              disable = false,
-              disable1 = true,
               show = false,
-              m10 = false,
-              m50 = false,
-              m100 = false,
-              m250 = false,
-              m500 = false,
             },
             tweaks = tweaks.defaults,
 
@@ -811,108 +799,10 @@ function updateMenu()
       title = "Сборщик мусора",
       submenu = {
         {
-          title = "Информация",
-          onclick = function()
-            sampShowDialog(
-                    0,
-                    "{7ef3fa}/edith v." .. thisScript().version .. ".", "Если скрипт переодически вылетает с ошибкой 'cannot resume non-suspended coroutine', нужно отключить сборщик мусора.\nПамять будет течь со скоростью ~60мб в час, но скрипт не будет вылетать.", "Закрыть"
-            )
-          end
-        },
-        {
-          title = " "
-        },
-        {
           title = "Флудить в консоль кол-во памяти: " .. tostring(settings.gc.show),
           onclick = function()
             settings.gc.show = not settings.gc.show
             inicfg.save(settings, "edith")
-          end
-        },
-        {
-          title = " "
-        },
-        {
-          title = "Отключить сборщик: " .. tostring(settings.gc.disable1),
-          onclick = function()
-            settings.gc.disable1 = not settings.gc.disable1
-            settings.gc.m10 = false
-            settings.gc.m50 = false
-            settings.gc.m100 = false
-            settings.gc.m250 = false
-            settings.gc.m500 = false
-            inicfg.save(settings, "edith")
-            thisScript():reload()
-          end
-        },
-        {
-          title = " "
-        },
-        {
-          title = "Очищать при 10мб: " .. tostring(settings.gc.m10),
-          onclick = function()
-            settings.gc.disable1 = false
-            settings.gc.m10 = not settings.gc.m10
-            settings.gc.m50 = false
-            settings.gc.m100 = false
-            settings.gc.m250 = false
-            settings.gc.m500 = false
-            inicfg.save(settings, "edith")
-            thisScript():reload()
-          end
-        },
-        {
-          title = "Очищать при 50мб: " .. tostring(settings.gc.m50),
-          onclick = function()
-            settings.gc.disable1 = false
-            settings.gc.m10 = false
-            settings.gc.m50 = not settings.gc.m50
-            settings.gc.m100 = false
-            settings.gc.m250 = false
-            settings.gc.m500 = false
-            inicfg.save(settings, "edith")
-            thisScript():reload()
-          end
-        },
-        {
-          title = "Очищать при 100мб: " .. tostring(settings.gc.m100),
-          onclick = function()
-            settings.gc.disable1 = false
-            settings.gc.m10 = false
-            settings.gc.m50 = false
-            settings.gc.m100 = not settings.gc.m100
-            settings.gc.m250 = false
-            settings.gc.m500 = false
-            inicfg.save(settings, "edith")
-            thisScript():reload()
-          end
-        },
-
-        {
-          title = "Очищать при 250мб: " .. tostring(settings.gc.m250),
-          onclick = function()
-            settings.gc.disable1 = false
-            settings.gc.m10 = false
-            settings.gc.m50 = false
-            settings.gc.m100 = false
-            settings.gc.m250 = not settings.gc.m250
-            settings.gc.m500 = false
-            inicfg.save(settings, "edith")
-            thisScript():reload()
-          end
-        },
-
-        {
-          title = "Очищать при 500мб: " .. tostring(settings.gc.m500),
-          onclick = function()
-            settings.gc.disable1 = false
-            settings.gc.m10 = false
-            settings.gc.m50 = false
-            settings.gc.m100 = false
-            settings.gc.m250 = false
-            settings.gc.m500 = not settings.gc.m500
-            inicfg.save(settings, "edith")
-            thisScript():reload()
           end
         },
       }
