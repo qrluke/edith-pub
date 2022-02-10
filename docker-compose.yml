@@ -65,3 +65,19 @@ services:
       driver: json-file
     volumes:
       - ./config:/config
+  # update discord.json every 300 seconds
+  update-discord:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-discord
+    restart: unless-stopped
+    environment:
+      DELAY_IN_SECONDS: 300
+      WHITELIST_RAW_LINK: "https://friendpaste.com/ID/raw"
+    logging:
+      options:
+        max-size: '1m'
+        max-file: '10'
+      driver: json-file
+    volumes:
+      - ./config:/config
