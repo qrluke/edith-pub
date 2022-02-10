@@ -1,0 +1,21 @@
+FROM python:3.9.10-slim-buster
+
+RUN mkdir sanic
+WORKDIR /sanic
+
+RUN mkdir db
+#RUN chown sanic:sanic db
+
+#USER sanic
+
+COPY requirements-jb.txt .
+
+RUN pip3 install -r requirements-jb.txt
+
+#USER root
+RUN rm requirements-jb.txt
+#USER sanic
+
+COPY jb.py .
+
+ENTRYPOINT python3 jb.py

@@ -35,6 +35,25 @@ services:
       driver: json-file
     volumes:
       - .:/sanic
+  discord-jb:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-jb
+    restart: unless-stopped
+    environment:
+      # enable jb notification service (depends on whitelist.txt, twinks.json, discord.json)
+      enable_jb: 0
+      channel_jb: 0
+      # discord bot api key for jb reporting
+      discord_jb: "key"
+    logging:
+      options:
+        max-size: '1m'
+        max-file: '10'
+      driver: json-file
+    volumes:
+      - .:/sanic
+  # update whitelist.txt every 300 seconds
   update-whitelist:
     build:
       context: .

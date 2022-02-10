@@ -1,0 +1,5 @@
+requests
+dico-api
+bs4
+lxml
+feedparser
