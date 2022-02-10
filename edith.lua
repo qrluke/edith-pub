@@ -7,6 +7,7 @@ script_url("https://github.com/qrlk/edith-pub")
 
 --поменять
 local ip = "http://localhost:33333/" --ip и порт сервера server.py (python3 server.py после pip3 install -r requirements.txt)
+local wip = "ws://localhost:33333/fast" --ip и порт сервера server.py (python3 server.py после pip3 install -r requirements.txt)
 local remoteResourceURL = ip .. "resource/edith/" --путь туда, где хостится папки resource/edith
 local serverAddress = "127.0.0.1" --сервер, где вы играете
 
@@ -431,121 +432,177 @@ function main()
 
   local panic = 0
 
-  table.insert(threads, lua_thread.create(function()
-    while true do
-      wait(transponder_delay)
+  local resLoad, websocket = pcall(require, "websocket")
+  if not resLoad then
 
-      if settings.gc.show and os.clock() - garbage_timer > 1 then
-        new = math.ceil(collectgarbage("count"))
-        if new - old >= 0 then
-          print(string.format("EDITH memory usage %.1f MiB", new / 1024), "+" .. tostring(new - old) .. "kb")
-        else
-          print(string.format("EDITH memory usage %.1f MiB", new / 1024), tostring(new - old) .. "kb")
+    sampAddChatMessage("[EDITH]: У вас нет библиотек для websocket. Используем устаревший способ.", 0xff0000)
+    print(resLoad, websocket)
+    table.insert(threads, lua_thread.create(function()
+      while true do
+        wait(transponder_delay)
+
+        if settings.gc.show and os.clock() - garbage_timer > 1 then
+          new = math.ceil(collectgarbage("count"))
+          if new - old >= 0 then
+            print(string.format("EDITH memory usage %.1f MiB", new / 1024), "+" .. tostring(new - old) .. "kb")
+          else
+            print(string.format("EDITH memory usage %.1f MiB", new / 1024), tostring(new - old) .. "kb")
+          end
+          old = new
+          garbage_timer = os.clock()
         end
-        old = new
-        garbage_timer = os.clock()
-      end
 
-      wait_for_res = true
-      down_res = false
+        wait_for_res = true
+        down_res = false
 
-      request_table = {}
+        request_table = {}
 
-      glonass.prepare(request_table)
+        glonass.prepare(request_table)
 
-      acapture.prepare(request_table)
+        acapture.prepare(request_table)
 
-      deathlist.prepare(request_table)
+        deathlist.prepare(request_table)
 
-      capturetimer.prepare(request_table)
+        capturetimer.prepare(request_table)
 
-      bikerinfo.prepare(request_table)
+        bikerinfo.prepare(request_table)
 
-      marker.prepare(request_table)
+        marker.prepare(request_table)
 
-      res_path = os.tmpname()
+        res_path = os.tmpname()
 
-      request_table_final = { data = request_table, random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
-      handler = downloadUrlToFile(
-              ip .. encodeJson(request_table_final),
-              res_path,
-              function(id, status, p1, p2)
-                if status == dlstatus.STATUS_ENDDOWNLOADDATA then
-                  down_res = true
+        request_table_final = { data = request_table, random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
+        handler = downloadUrlToFile(
+                ip .. encodeJson(request_table_final),
+                res_path,
+                function(id, status, p1, p2)
+                  if status == dlstatus.STATUS_ENDDOWNLOADDATA then
+                    down_res = true
+                  end
+                  if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+                    wait_for_res = false
+                  end
                 end
-                if status == dlstatus.STATUSEX_ENDDOWNLOAD then
-                  wait_for_res = false
-                end
+        )
+        while wait_for_res do
+          wait(100)
+        end
+        if down_res and doesFileExist(res_path) then
+          f = io.open(res_path, "r")
+          if f then
+            text = f:read("*a")
+            info = decodeJson(text)
+            if info ~= nil then
+              glonass.process(info)
+
+              acapture.process(info)
+
+              deathlist.process(info)
+
+              capturetimer.process(info)
+
+              marker.process(info)
+
+              panic = 0
+            else
+              if settings.welcome.show then
+                sampAddChatMessage(
+                        "{348cb2}[EDITH]: {ff0000}Некорректный ответ сервера. Попробуйте перезапустить скрипт: CTRL + R.",
+                        0xff0000
+                )
               end
-      )
-      while wait_for_res do
-        wait(100)
-      end
-      if down_res and doesFileExist(res_path) then
-        f = io.open(res_path, "r")
-        if f then
-          text = f:read("*a")
-          info = decodeJson(text)
-          if info ~= nil then
-            glonass.process(info)
+              do_not_reload = true
 
-            acapture.process(info)
-
-            deathlist.process(info)
-
-            capturetimer.process(info)
-
-            marker.process(info)
-
-            panic = 0
+              print("unload")
+              error(string.format("\n\nFORCE UNLOAD:\nBad server response.\n%s\n", text))
+              thisScript():unload()
+            end
+            f:close()
+            f = nil
+            info = nil
+            os.remove(response_path)
           else
             if settings.welcome.show then
               sampAddChatMessage(
-                      "{348cb2}[EDITH]: {ff0000}Некорректный ответ сервера. Попробуйте перезапустить скрипт: CTRL + R.",
+                      "{348cb2}[EDITH]: {ff0000}Ошибка чтения файла с информацией. Попробуйте перезапустить скрипт: CTRL + R.",
                       0xff0000
               )
             end
             do_not_reload = true
+            error(string.format("\n\nFORCE UNLOAD:\nError reading file with server response.\n"))
 
-            print("unload")
-            error(string.format("\n\nFORCE UNLOAD:\nBad server response.\n%s\n", text))
             thisScript():unload()
           end
-          f:close()
-          f = nil
-          info = nil
-          os.remove(response_path)
         else
-          if settings.welcome.show then
-            sampAddChatMessage(
-                    "{348cb2}[EDITH]: {ff0000}Ошибка чтения файла с информацией. Попробуйте перезапустить скрипт: CTRL + R.",
-                    0xff0000
-            )
-          end
-          do_not_reload = true
-          error(string.format("\n\nFORCE UNLOAD:\nError reading file with server response.\n"))
+          panic = panic + 1
+          if panic > 3 then
+            if settings.welcome.show then
+              sampAddChatMessage(
+                      "{348cb2}[EDITH]: {ff0000}Что-то: ответ от сервера не сохранился в файл. Попробуйте перезапустить скрипт: CTRL + R.",
+                      0xff0000
+              )
+            end
+            do_not_reload = true
+            print("unload")
 
-          thisScript():unload()
+            error(string.format("\n\nFORCE UNLOAD:\nServer did not respond for %s times.\n", panic))
+            thisScript():unload()
+          end
         end
-      else
-        panic = panic + 1
-        if panic > 3 then
-          if settings.welcome.show then
-            sampAddChatMessage(
-                    "{348cb2}[EDITH]: {ff0000}Что-то: ответ от сервера не сохранился в файл. Попробуйте перезапустить скрипт: CTRL + R.",
-                    0xff0000
-            )
-          end
-          do_not_reload = true
-          print("unload")
 
-          error(string.format("\n\nFORCE UNLOAD:\nServer did not respond for %s times.\n", panic))
-          thisScript():unload()
+      end
+    end))
+  else
+    table.insert(threads, lua_thread.create(function()
+      local client = websocket.client.copas({ timeout = 20 })
+
+      client:connect(wip)
+
+      local reconnect = 0
+
+      while true do
+        wait(transponder_delay / 10)
+
+        if settings.gc.show and os.clock() - garbage_timer > 1 then
+          new = math.ceil(collectgarbage("count"))
+          if new - old >= 0 then
+            print(string.format("EDITH memory usage %.1f MiB", new / 1024), "+" .. tostring(new - old) .. "kb")
+          else
+            print(string.format("EDITH memory usage %.1f MiB", new / 1024), tostring(new - old) .. "kb")
+          end
+          old = new
+          garbage_timer = os.clock()
+        end
+
+        request_table = {}
+
+        request_table_final = { data = prepare(request_table), random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
+
+        client:send(encodeJson(request_table_final))
+
+        local ps, res = pcall(decodeJson, client:receive())
+        if res then
+          process(res)
+        else
+          print("Ошибка", res)
+        end
+        if client.state == "CLOSED" then
+          reconnect = reconnect + 1
+          wait(2000)
+
+          print(client:connect(wip))
+          if reconnect > 5 then
+            do_not_reload = true
+
+            error(string.format("\n\nFORCE UNLOAD:\nWebsocket connection error.\n"))
+            thisScript():unload()
+          end
+        else
+          reconnect = 0
         end
       end
-
-    end
-  end))
+    end))
+  end
 
   while true do
     wait(-1)
@@ -556,6 +613,34 @@ function main()
       print("temp threads", k, v:status())
     end
   end
+end
+
+function prepare(request_table)
+  glonass.prepare(request_table)
+
+  acapture.prepare(request_table)
+
+  deathlist.prepare(request_table)
+
+  capturetimer.prepare(request_table)
+
+  bikerinfo.prepare(request_table)
+
+  marker.prepare(request_table)
+
+  return request_table
+end
+
+function process(info)
+  glonass.process(info)
+
+  acapture.process(info)
+
+  deathlist.process(info)
+
+  capturetimer.process(info)
+
+  marker.process(info)
 end
 
 function auth()

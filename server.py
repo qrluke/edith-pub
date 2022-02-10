@@ -394,6 +394,21 @@ async def test(request, exception):
     return json(await process(info, answer))
 
 
+async def ws(request, ws):
+    while True:
+        data = await ws.recv()
+        info = js.loads(data)
+        answer = {}
+        answer["capter"] = ""
+        res = js.dumps((await process(info, answer)))
+        await ws.send(res)
+
+
+app.config.WEBSOCKET_PING_INTERVAL = 86400
+app.config.WEBSOCKET_PING_TIMEOUT = 86400
+
+app.add_websocket_route(ws, "fast")
+
 if __name__ == '__main__':
     database = Database('sqlite:///db/deathlist.db')
     asyncio.run(database.connect())
