@@ -376,13 +376,24 @@ function main()
   table.insert(threads, lua_thread.create(kunai.main))
   table.insert(threads, lua_thread.create(discord.main))
 
+  function callMenu(id, pos, title)
+    if title and title:find("клавиш") then
+      return
+    end
+    while sampIsDialogActive() do
+      wait(100)
+    end
+    updateMenu()
+    submenus_show(mod_submenus_sa, "{348cb2}EDITH v." .. thisScript().version,
+            "Выбрать", "Закрыть", "Назад", callMenu, id, pos)
+  end
+
   sampRegisterChatCommand(
           "edith",
           function()
             table.insert(tempThreads, lua_thread.create(
                     function()
-                      updateMenu()
-                      submenus_show(mod_submenus_sa, "{348cb2}EDITH v." .. thisScript().version, "Выбрать", "Закрыть", "Назад")
+                      callMenu()
                     end
             ))
           end
@@ -10507,38 +10518,59 @@ end
 --------------------------------------3RD---------------------------------------
 --------------------------------------------------------------------------------
 -- made by FYP
-function submenus_show(menu, caption, select_button, close_button, back_button)
+function submenus_show(menu, caption, select_button, close_button, back_button, callback, start, pos)
   select_button, close_button, back_button = select_button or "Select", close_button or "Close", back_button or "Back"
   prev_menus = {}
-  function display(menu, id, caption)
+  function display(menu, id, caption, start, pos)
     local string_list = {}
     for i, v in ipairs(menu) do
       table.insert(string_list, type(v.submenu) == "table" and v.title .. "  >>" or v.title)
     end
-    sampShowDialog(
-            id,
-            caption,
-            table.concat(string_list, "\n"),
-            select_button,
-            (#prev_menus > 0) and back_button or close_button,
-            4
-    )
+    if not start then
+      sampShowDialog(
+              id,
+              caption,
+              table.concat(string_list, "\n"),
+              select_button,
+              (#prev_menus > 0) and back_button or close_button,
+              4
+      )
+      if pos then
+        sampSetCurrentDialogListItem(pos)
+        if pos > 20 then
+          setVirtualKeyDown(40, true)
+          setVirtualKeyDown(40, false)
+          setVirtualKeyDown(38, true)
+          setVirtualKeyDown(38, false)
+        end
+      end
+      pos = nil
+    end
+
     repeat
       wait(0)
       local result, button, list = sampHasDialogRespond(id)
+      if start then
+        result, button, list = true, 1, start - 1
+      end
       if result then
         if button == 1 and list ~= -1 then
           local item = menu[list + 1]
           if type(item.submenu) == "table" then
             -- submenu
-            table.insert(prev_menus, { menu = menu, caption = caption })
+            table.insert(prev_menus, { menu = menu, caption = caption, id = list + 1 })
             if type(item.onclick) == "function" then
               item.onclick(menu, list + 1, item.submenu)
             end
-            return display(item.submenu, id + 1, item.submenu.title and item.submenu.title or item.title)
+            return display(item.submenu, id + 1, item.submenu.title and item.submenu.title or item.title, nil, pos)
           elseif type(item.onclick) == "function" then
             local result = item.onclick(menu, list + 1)
             if not result then
+              if prev_menus and prev_menus[#prev_menus] and prev_menus[#prev_menus].id then
+                if callback then
+                  callback(prev_menus[#prev_menus].id, list, item.title)
+                end
+              end
               return result
             end
             return display(menu, id, caption)
@@ -10548,12 +10580,12 @@ function submenus_show(menu, caption, select_button, close_button, back_button)
           if #prev_menus > 0 then
             local prev_menu = prev_menus[#prev_menus]
             prev_menus[#prev_menus] = nil
-            return display(prev_menu.menu, id - 1, prev_menu.caption)
+            return display(prev_menu.menu, id - 1, prev_menu.caption, nil, prev_menu.id - 1)
           end
           return false
         end
       end
     until result
   end
-  return display(menu, 31337, caption or menu.title)
+  return display(menu, 31337, caption or menu.title, start, pos)
 end
