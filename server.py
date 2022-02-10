@@ -1,61 +1,20 @@
 #!/usr/bin/env python3
-# edith server (2019)
 import asyncio
-import datetime
 import io
-import linecache
+import json as js
 import os
-import pandas as pd
 import re
 import sys
-import time
 import threading
+import time
 import urllib.parse
-from aiohttp import web
+
 from databases import Database
-from discord_webhook import DiscordWebhook, DiscordEmbed
+from sanic import Sanic
+from sanic.exceptions import NotFound
+from sanic.response import json
 
-last_cl = time.time()
-last_c = time.time()
-
-import sqlite3
-
-con = sqlite3.connect('db/deathlist.db')
-cur = con.cursor()
-
-cur.executescript('''CREATE TABLE IF NOT EXISTS "dmg_out" (
-	"id"	INTEGER,
-	"timestamp"	INTEGER,
-	"nick"	TEXT,
-	"damage"	INTEGER,
-	PRIMARY KEY("id" AUTOINCREMENT)
-);
-CREATE TABLE IF NOT EXISTS "dmg_in" (
-	"id"	INTEGER,
-	"timestamp"	INTEGER,
-	"nick"	TEXT,
-	"damage"	INTEGER,
-	PRIMARY KEY("id" AUTOINCREMENT)
-);
-CREATE TABLE IF NOT EXISTS "kills" (
-	"id"	INTEGER,
-	"enable"	BLOB DEFAULT 1,
-	"timestamp"	INTEGER,
-	"killer"	TEXT,
-	"killed"	TEXT,
-	"weapon"	INTEGER,
-	"skin"	INTEGER,
-	"lvl"	INTEGER,
-	"type"	TEXT,
-	"score"	INTEGER,
-	PRIMARY KEY("id" AUTOINCREMENT)
-);''')
-con.commit()
-
-
-def ctime():
-    return int(time.time())
-
+from utils import ctime, startup_check
 
 try:
     sys.argv[1]
@@ -66,27 +25,137 @@ except IndexError:
 
 DELAY = int(sys.argv[1])
 
-nicks = {}
-vehicles = {}
-capture = {}
-capters = {}
-capterslist = []
+app = Sanic(name='edith-server')
+
+twink = {}
+
+last_changed = 0
 
 users = {}
 
-last_changed = 0
-import re
 
-from sanic import Sanic
-from sanic.response import json
-from sanic.response import html
-from sanic.response import text
-from sanic.exceptions import NotFound
-import json as js
+def process_auth(info):
+    global last_changed
 
-admins = ["Nick_Name"]
+    if last_changed != os.stat("config/whitelist.txt").st_mtime:
+        with io.open('config/whitelist.txt') as file:
+            for line in file:
+                x = line.split()
+                if len(x) == 2:
+                    users.update({x[0]: x[1]})
+        last_changed = os.stat("config/whitelist.txt").st_mtime
 
-app = Sanic(name='edith-server')
+    if info['auth'] not in users:
+        return {"result": "wrong user"}
+    else:
+        if info['password'] == users[info['auth']]:
+            return {"result": "ok", "like": list(users.keys()), "delay": DELAY}
+        else:
+            return {"result": "wrong password", "delay": DELAY}
+
+
+last_c = time.time()
+
+nicks = {}
+
+
+def clear_old():
+    global last_c
+
+    if time.time() - last_c > 300:
+        last_c = time.time()
+        del_nicks_list = []
+        for k, v in nicks.items():
+            if time.time() - v["timestamp"] > 300:
+                del_nicks_list.append(k)
+        for k in del_nicks_list:
+            if k in nicks:
+                del nicks[k]
+
+
+bikers = {}
+
+
+def process_bikers(info):
+    global bikers
+
+    if "bikers" in info["data"]:
+        bikers = info["data"]["bikers"]
+
+
+def process_glonass(info, answer):
+    if 'sender' in info["data"]:
+        nicks.update({info["data"]['sender']['sender']: {
+            'timestamp': time.time(),
+            'heading': info["data"]['sender']['heading'],
+            'health': info["data"]['sender']['health'],
+            'x': info["data"]['sender']['pos']['x'],
+            'y': info["data"]['sender']['pos']['y'],
+            'z': info["data"]['sender']['pos']['z'],
+        }})
+
+    if info["data"]['request'] == 1:
+        answer["nicks"] = nicks
+
+
+last_cl = time.time()
+
+capters = {}
+capterslist = []
+
+
+def process_acapture(info, answer):
+    global last_cl
+
+    if 'capter' in info["data"]:
+        capter = info["data"]["capter"]
+        if time.time() - last_cl > 15:
+            last_cl = time.time()
+            del_capters_list = []
+            for k in capters.keys():
+                if time.time() - capters[k]["lastseen"] > 15:
+                    del_capters_list.append(k)
+            for k in del_capters_list:
+                if k in capters:
+                    del capters[k]
+                    print(k + "deleted")
+                if k in capterslist:
+                    capterslist.remove(k)
+                    print(k + "deleted")
+        if info["data"]["type"] == "register":
+            if capter in capters:
+                del capters[capter]
+            if capter in capterslist:
+                capterslist.remove(capter)
+            capters[capter] = {'lastcapt': 0, 'lastseen': time.time()}
+            capterslist.append(capter)
+            answer["capter"] = "Go capture! " + str(len(capters))
+        if info["data"]["type"] == "ready":
+            if capters[capter] == None:
+                capters[capter] = {'lastcapt': 0, 'lastseen': time.time()}
+            capters[capter]['lastseen'] = time.time()
+            ind = capterslist.index(capter)
+            if ind <= 5:
+                if int(time.time()) % 5 == ind and time.time() - capters[capter]["lastcapt"] > 4:
+                    capters[capter]["lastcapt"] = time.time()
+                    answer["capter"] = "GO"
+                else:
+                    answer["capter"] = "WAIT"
+            else:
+                if int(time.time() + 0.5) % 5 == ind % 5 and time.time() - capters[capter]["lastcapt"] > 4:
+                    capters[capter]["lastcapt"] = time.time()
+                    answer["capter"] = "GO"
+                else:
+                    answer["capter"] = "WAIT"
+        if info["data"]["type"] == "unregister":
+            if capter in capters:
+                del capters[capter]
+            if capter in capterslist:
+                capterslist.remove(capter)
+            answer["capter"] = "END"
+
+
+death_list = []
 
 skins_army = [287, 191]
 skins_gos = [165, 166, 280, 281, 282, 283, 284, 285, 286, 288, 300, 301, 302, 303, 304, 305, 306, 307, 309, 310, 311,
@@ -95,317 +164,95 @@ skins_ghetto = [114, 115, 116, 292, 41, 173, 174, 175, 226, 273, 105, 106, 107, 
                 108, 109, 110, 190]
 skins_bikers = [247, 248, 254, 100, 181, 178, 246]
 
-import pytz
+admins = ["Nick_Name"]
 
 
-def to_fixed(num, digits=0):
-    return f"{num:.{digits}f}"
-
-
-twink = {}
-
-
-def getTop(cur, timestamp, html=False):
-    day = []
-    for i in cur.execute(
-            "SELECT `killer`,  SUM(score) AS `score`, COUNT(*) AS `kills` FROM `kills` WHERE (`type` = 'normal' or `type` = 'dm') and `timestamp` > :unix  GROUP BY  `killer` ORDER BY `score` DESC",
-            {"unix": timestamp}).fetchall():
-        d = {}
-        d["killer"] = i[0]
-        d["score"] = i[1]
-        d["kills"] = i[2]
-        d["deaths"] = cur.execute(
-            "SELECT COUNT(*) FROM `kills` WHERE type == 'died' AND killer != 'nil' AND timestamp > :unix AND killed == :nick",
-            {"nick": d["killer"], "unix": timestamp}).fetchone()[0]
-        try:
-            d["K/D"] = to_fixed(d["kills"] / d["deaths"], 1)
-        except ZeroDivisionError:
-            d["K/D"] = ""
-        d["suicides"] = cur.execute(
-            "SELECT COUNT(*) FROM `kills` WHERE type == 'died' AND killer == 'nil' AND timestamp > :unix AND killed == :nick",
-            {"nick": d["killer"], "unix": timestamp}).fetchone()[0]
-        d["dmg out"] = cur.execute("SELECT SUM(damage) FROM `dmg_out` WHERE timestamp > :unix AND nick == :nick",
-                                   {"nick": d["killer"], "unix": timestamp}).fetchone()[0]
-        d["dmg in"] = cur.execute("SELECT SUM(damage) FROM `dmg_in` WHERE timestamp > :unix AND nick == :nick",
-                                  {"nick": d["killer"], "unix": timestamp}).fetchone()[0]
-        d["demorgan"] = \
-            cur.execute("SELECT SUM(lvl) FROM `kills` WHERE timestamp > :unix AND killer == :nick AND type == 'dm'",
-                        {"nick": d["killer"], "unix": timestamp}).fetchone()[0]
-        for k, v in d.items():
-            if v == None:
-                d[k] = 0
-        if d["score"] < 0:
-            d["score"] = 0
-        day.append(d)
-
-    day_new = {}
-
-    for i in day:
-        done = False
-        for k, v in twink.items():
-            if i["killer"] in v:
-                if k in day_new:
-                    day_new[k]["score"] += i["score"]
-                    day_new[k]["kills"] += i["kills"]
-                    day_new[k]["deaths"] += i["deaths"]
-                    try:
-                        day_new[k]["K/D"] = to_fixed(day_new[k]["kills"] / day_new[k]["deaths"], 1)
-                    except ZeroDivisionError:
-                        day_new[k]["K/D"] = ""
-                    day_new[k]["suicides"] += i["suicides"]
-                    day_new[k]["dmg out"] += i["dmg out"]
-                    day_new[k]["dmg in"] += i["dmg in"]
-                    day_new[k]["demorgan"] += int(i["demorgan"])
+async def process_deathlist(info, answer):
+    if "deathList" in info["data"]:
+        for i in info["data"]["deathList"]:
+            if len(death_list) == 5:
+                death_list.pop(0)
+            if i["type"] == "died":
+                score = 0
+                if 'killerNick' in i:
+                    text = f"DIED: {i['killerNick']} ubil {i['killedNick']} iz {i['weapon']}"
                 else:
-                    day_new[k] = {}
-                    day_new[k]["killer"] = k
-                    day_new[k]["score"] = i["score"]
-                    day_new[k]["kills"] = i["kills"]
-                    day_new[k]["deaths"] = i["deaths"]
-                    try:
-                        day_new[k]["K/D"] = to_fixed(i["kills"] / i["deaths"], 1)
-                    except ZeroDivisionError:
-                        day_new[k]["K/D"] = ""
-                    day_new[k]["suicides"] = i["suicides"]
-                    day_new[k]["dmg out"] = i["dmg out"]
-                    day_new[k]["dmg in"] = i["dmg in"]
-                    day_new[k]["demorgan"] = int(i["demorgan"])
-                done = True
-                break
-        if not done:
-            day_new[i["killer"]] = i
+                    text = f"{i['killedNick']} ubil sebya"
+            elif i["type"] == "afk":
+                score = 0.5
+                if i["killedNick"] in users:
+                    score = -1
+                if i["killedNick"] in admins:
+                    score = -10
+                text = f"KILL V AFK: {i['killerNick']} ubil {i['killedNick']} iz {i['weapon']}, zas4itano {score} o4kov."
+            elif i["type"] == "normal":
+                if i['skin'] in skins_army:
+                    score = 3
+                elif i['skin'] in skins_ghetto:
+                    score = 2
+                elif i['skin'] in skins_gos:
+                    score = 5
+                elif i['skin'] in skins_bikers:
+                    score = 2
+                else:
+                    score = 1
 
-    day_new = dict(sorted(day_new.items(), key=lambda item: item[1]['score'], reverse=True))
+                if i["killedNick"] in users:
+                    score = -1
+                if i["killedNick"] in admins:
+                    score = -10
+                if i["lvl"] < 4 and i["lvl"] > 0:
+                    score = score * 2
+                text = f"4estniy kill: {i['killerNick']} ubil {i['killedNick']} iz {i['weapon']}, zas4itano {score} o4kov."
+            elif i["type"] == "dm":
+                score = 5
+                text = f"DM: {i['killerNick']} posadil {i['killedNick']} na {i['lvl']}: {i['weapon']}."
 
-    i = 1
-    if html:
-        b = {}
-        df = pd.DataFrame(data=b)
-        for k, v in day_new.items():
-            b[i] = v
-            i += 1
-        df = pd.DataFrame(data=b)
-        df = df.fillna(' ').T
-        return df.to_html(escape=False)
-    else:
-        top = {}
-        i = 1
-        for k, v in day_new.items():
-            top[i] = v
-            i += 1
-        return top
+            death_list.append({"time": time.time(), "data": i, "text": text, "score": score})
 
+            query = "INSERT INTO kills(timestamp, killer, killed, weapon, skin, lvl, type, score) VALUES (:timestamp, :killer, :killed, :weapon, :skin, :lvl, :type, :score)"
+            killer = "nil"
+            if "killerNick" in i:
+                killer = i["killerNick"]
 
-def getAntiTop(cur, timestamp, html=False, min=3):
-    day = []
-    for i in cur.execute(
-            "SELECT `killer`, COUNT(*) AS `kills` FROM `kills` WHERE `type` = 'died' and `timestamp` > :unix  GROUP BY  `killer` ORDER BY `kills` DESC",
-            {"unix": timestamp}).fetchall():
-        if i[0] not in users and i[0] != '' and i[0] != 'nil' and i[1] >= min:
-            d = {}
-            d["killer"] = i[0]
-            d["kills"] = i[1]
-            day.append(d)
-
-    if html:
-        b = {}
-        i = 1
-        for v in day:
-            b[i] = v
-            i += 1
-        df = pd.DataFrame(data=b)
-        df = df.fillna(' ').T
-        return df.to_html(escape=False)
-    else:
-        top = {}
-        i = 1
-        for v in day:
-            top[i] = v
-            i += 1
-        return top
-
-
-def getAdmTop(cur, timestamp, html=False):
-    day = []
-    for i in cur.execute(
-            "SELECT `killed`, SUM(lvl) AS `min` FROM `kills` WHERE `type` = 'dm' and `timestamp` > :unix  GROUP BY  `killed` ORDER BY `min` DESC",
-            {"unix": timestamp}).fetchall():
-        d = {}
-        d["adm"] = i[0]
-        d["min"] = i[1]
-        day.append(d)
-
-    if html:
-        b = {}
-        i = 1
-        for v in day:
-            b[i] = v
-            i += 1
-        df = pd.DataFrame(data=b)
-        df = df.fillna(' ').T
-        return df.to_html(escape=False)
-    else:
-        top = {}
-        i = 1
-        for v in day:
-            top[i] = v
-            i += 1
-        return top
-
-
-@app.route('/crash_report/<data:[^/].*?>')
-async def handle_crash_report(request, data: str):
-    crash = js.loads(urllib.parse.unquote(data))
-
-    webhook = DiscordWebhook(url=os.environ["crash_webhook"])
-
-    crash['data'] = crash['data'].replace('$$$$n', '\n').replace('$$$$t', '\t')
-
-    embed = DiscordEmbed(
-        description=f"```lua\n{crash['data']}```",
-        title=f"New crash report",
-        color=242424,
-        timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime())
-    )
-
-    embed.set_author(
-        name=crash["nick"],
-    )
-
-    embed.set_footer(text=f"Автоматически отправленное сообщение об ошибке")
-
-    embed.add_embed_field(name="edith version", value=crash["sv"])
-    embed.add_embed_field(name="moon version", value=crash["v"])
-    embed.add_embed_field(name="Online", value=str(datetime.timedelta(seconds=int(crash["clock"]))))
-
-    webhook.add_embed(embed)
-    webhook.execute()
-
-    return text('ok')
-
-
-
-@app.route('/top')
-async def test(request):
-    global twink
-    with open("config/twinks.json", "r") as fp:
-        twink = js.load(fp)
-    day = datetime.datetime.now(pytz.timezone("Europe/Moscow"))
-    timestamp = datetime.datetime.now(pytz.timezone("Europe/Moscow")).replace(hour=5, minute=0, second=0,
-                                                                              microsecond=0).timestamp()
-    if day.hour < 5:
-        timestamp = timestamp - 86400
-
-    day_top = getTop(cur, timestamp, True)
-    day_anti_top = getAntiTop(cur, timestamp, True)
-    day_adm_top = getAdmTop(cur, timestamp, True)
-
-    timestamp = (datetime.datetime.now(pytz.timezone("Europe/Moscow")) - datetime.timedelta(
-        days=datetime.datetime.today().weekday())).replace(hour=5, minute=0, second=0, microsecond=0).timestamp()
-
-    week_top = getTop(cur, timestamp, True)
-    week_anti_top = getAntiTop(cur, timestamp, True)
-    week_adm_top = getAdmTop(cur, timestamp, True)
-
-    all_top = getTop(cur, 0, True)
-    anti_top = getAntiTop(cur, 0, True)
-    all_adm_top = getAdmTop(cur, 0, True)
-
-    b = {}
-    i = 1
-    for k, v in twink.items():
-        for kk in v:
-            b[i] = {
-                "group": k,
-                "nick": kk
+            values = {
+                "timestamp": ctime(),
+                "killer": killer,
+                "killed": i["killedNick"],
+                "weapon": i["weapon"],
+                "skin": i["skin"],
+                "lvl": i["lvl"],
+                "type": i["type"],
+                "score": score
             }
-            i += 1
-    df = pd.DataFrame(data=b)
-    df = df.fillna(' ').T
-    twinks_html = df.to_html(escape=False)
 
-    b = {}
-    for i in cur.execute(
-            "SELECT id, timestamp, type, killer, score, killed, weapon, skin, lvl FROM kills ORDER BY id DESC").fetchall():
-        b[i[0]] = {
-            "timestamp": datetime.datetime.fromtimestamp(i[1]),
-            "type": i[2],
-            "killer": i[3],
-            "score": i[4],
-            "killed": i[5],
-            "weapon": i[6],
-            "skin": i[7],
-            "lvl": i[8]
+            await database.execute(query=query, values=values)
+
+    if "dmg_in" in info["data"]:
+        query = "INSERT INTO dmg_in(timestamp, nick, damage) VALUES (:timestamp, :nick, :damage)"
+        values = {
+            "timestamp": ctime(),
+            "nick": info['creds']['nick'],
+            "damage": info["data"]["dmg_in"]
         }
 
-        if b[i[0]]["score"] < 0:
-            b[i[0]]["score"] = 0
+        await database.execute(query=query, values=values)
 
-    df = pd.DataFrame(data=b)
-    df = df.fillna(' ').T
-    return html(
-        f"""
-<b>Правила</b>
-<br>* Сюда попадают всё убийства и смерти пользователей эдита.
-<br>* Для каждого убийства считаются очки, есть топ по ним.
-<br>* Известные твинки в топе считаются за одного участника.
-<br>* Для учёта нужно включить серверный дамаг информер в /mm (текст и 3д текст).
-<br>* День начинается в 5 утра по мск, неделя в пн в 5 утра по мск.
-<br>
-<br><b>Очки:</b><br>* Смерть: +0
-<br>* Убийство в афк: +0.5
-<br>* Убийство гражданского: +1
-<br>* Убийство геттора: +2
-<br>* Убийство байкера: +2
-<br>* Убийство военного: +3
-<br>* Убийство пд/фбр: +5
-<br>* Попадание в деморган: +5
-<br>* Убийство игрока 1-3 уровня: x2
-<br>
-<br><b>Штрафы:</b>
-<br>* Убийство пользователя эдита: -1
-<br>* Убийство админа эдита: -10
-<br>
-<br><b>Твинки:</b>
-<br>
-<details>Список известных эдиту твинков, счет будет суммироваться в топе.
-<br>Если вас нет, напишите федуку в дискорде, я вас добавлю.
-<br>{twinks_html}
-</details>
-<br><b>day top</b>
-<br>{day_top}
-<br><b>day antitop</b>
-<br><details>{day_anti_top}</details>
-<br><b>day admtop</b>
-<br><details>{day_adm_top}</details>
-<br><b>week top</b>
-<br>{week_top}
-<br><b>week antitop</b>
-<br><details>{week_anti_top}</details>
-<br><b>week admtop</b>
-<br><details>{week_adm_top}</details>
-<br><b>all top</b>
-<br>{all_top}
-<br><b>anti_top</b>
-<br><details>{anti_top}</details>
-<br><b>all admtop</b>
-<br><details>{all_adm_top}</details>
-<br><b>log</b>
-<br><details>{df.to_html(escape=False)}</details>
-""")
+    if "dmg_out" in info["data"]:
+        query = "INSERT INTO dmg_out(timestamp, nick, damage) VALUES (:timestamp, :nick, :damage)"
+        values = {
+            "timestamp": ctime(),
+            "nick": info['creds']['nick'],
+            "damage": info["data"]["dmg_out"]
+        }
+
+        await database.execute(query=query, values=values)
+
+    if "getDeathList" in info["data"]:
+        answer["deathList"] = death_list
 
 
-death_list = []
-
-warehouse = {"timestamp": 0, "warehouse": 0, "max": 200000}
-warehouse_rest = {"timestamp": 0, "heal": 0, "heal_max": 5000, "alk": 0, "alk_all": 0, "benz": 0, "benz_all": 0}
-capture_data = {"timestamp": 0, "f0": {"t": "w", "c": "mc"}, "f1": {"t": "w", "c": "mc"}, "f2": {"t": "w", "c": "mc"},
-                "f3": {"t": "w", "c": "mc"}, "f4": {"t": "w", "c": "mc"}, "s0": {"t": "w", "c": "mc"},
-                "s1": {"t": "w", "c": "mc"}, "s2": {"t": "w", "c": "mc"}}
-capture_next = {"timestamp": 0, "next": 0}
-
-marker = {}
-bikers = {}
+bikers_textdraw = r"~y~KILLS~n~ ~n~~r~(.+): ~w~(\d+)~n~~b~(.+): ~w~(\d+)~n~~b~~h~ID\((\d)\)"
 
 textdraw = {}
 textdraw["timestamp_cr"] = -1
@@ -415,792 +262,143 @@ textdraw["defender"] = "?"
 textdraw["defender_kills"] = -1
 textdraw["capture_id"] = -1
 
-bikers_textdraw = r"~y~KILLS~n~ ~n~~r~(.+): ~w~(\d+)~n~~b~(.+): ~w~(\d+)~n~~b~~h~ID\((\d)\)"
+capture = {}
+
+
+def process_capturetimer(info, answer):
+    if "timeleft_type" in info["data"]:
+        if "time" not in capture:
+            capture["time"] = time.time()
+            capture["type"] = info["data"]["timeleft_type"]
+        else:
+            if capture["type"] == info["data"]["timeleft_type"]:
+                if capture["type"] == 25:
+                    if time.time() - capture["time"] > 3600:
+                        capture["time"] = time.time()
+                elif capture["type"] == 10:
+                    if time.time() - capture["time"] > 3600:
+                        capture["time"] = time.time()
+                elif capture["type"] == 2:
+                    if time.time() - capture["time"] > 100:
+                        capture["time"] = time.time()
+                elif capture["type"] == 0:
+                    if time.time() - capture["time"] > 3600:
+                        capture["time"] = time.time()
+            else:
+                if time.time() - capture["time"] > 60:
+                    capture["time"] = time.time()
+                    capture["type"] = info["data"]["timeleft_type"]
+
+    if "textdraw" in info["data"]:
+        if info["data"]["textdraw"]["text"].find(os.environ["curb"]) != -1:
+            td = re.match(bikers_textdraw, info["data"]["textdraw"]["text"])
+            if textdraw["timestamp_cr"] == -1:
+                textdraw["timestamp_cr"] = ctime()
+            textdraw["attacker"] = td[1]
+            textdraw["attacker_kills"] = int(td[2])
+            textdraw["defender"] = td[3]
+            textdraw["defender_kills"] = int(td[4])
+            textdraw["capture_id"] = int(td[5])
+
+    answer["capture"] = capture.copy()
+
+    if "type" in answer["capture"]:
+        if answer["capture"]["type"] <= 0:
+            answer["capture"]["type"] = 0
+
+
+warehouse = {"timestamp": 0, "warehouse": 0, "max": 200000}
+warehouse_rest = {"timestamp": 0, "heal": 0, "heal_max": 5000, "alk": 0, "alk_all": 0, "benz": 0, "benz_all": 0}
+capture_data = {"timestamp": 0, "f0": {"t": "w", "c": "mc"}, "f1": {"t": "w", "c": "mc"}, "f2": {"t": "w", "c": "mc"},
+                "f3": {"t": "w", "c": "mc"}, "f4": {"t": "w", "c": "mc"}, "s0": {"t": "w", "c": "mc"},
+                "s1": {"t": "w", "c": "mc"}, "s2": {"t": "w", "c": "mc"}}
+capture_next = {"timestamp": 0, "next": 0}
+
+
+def process_bikerinfo(info):
+    if 'bikerinfo' in info["data"]:
+        short = info["data"]["bikerinfo"]
+        if "warehouse_simple" in short:
+            warehouse.update({"timestamp": ctime(), "warehouse": int(short["warehouse_simple"]["wh"])})
+
+        if "warehouse" in short:
+            short_data = short["warehouse"]["data"]
+            warehouse.update(
+                {"timestamp": ctime(), "warehouse": int(short_data["wh"]), "max": int(short_data["wh_all"])})
+            warehouse_rest.update(
+                {"timestamp": ctime(), "heal": int(short_data["heal"]), "heal_max": int(short_data["heal_all"]),
+                 "alk": int(short_data["alk"]), "alk_all": int(short_data["alk_all"]),
+                 "benz": int(short_data["benz"]), "benz_all": int(short_data["benz_all"])})
+        if "capture" in short:
+            short_capt = short["capture"]["data"]
+            capture_data.update({"timestamp": ctime()})
+            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
+                capture_data.update({bid: {"t": short_capt[bid]["type"], "c": short_capt[bid]["control"]}})
+        if "capture_next" in short:
+            capture_next.update({"timestamp": ctime(), "next": ctime() + int(short["capture_next"]["next"])})
+
+
+marker = {}
+
+
+def process_marker(info, answer):
+    global marker
+
+    if 'marker' in info["data"]:
+        marker = {
+            "data": info["data"]["marker"],
+            "timestamp": ctime()
+        }
+
+    if marker != {}:
+        if ctime() - marker["timestamp"] > 30:
+            marker = {}
+        elif "marker_remove" in info["data"]:
+            marker = {}
+
+    if marker != {}:
+        answer["marker"] = marker
+
+
+async def process(info, answer):
+    if 'auth' in info:
+        return process_auth(info)
+    else:
+        if users[info['creds']['nick']] == info['creds']['pass']:
+            clear_old()
+
+            process_bikers(info)
+
+            process_glonass(info, answer)
+
+            process_acapture(info, answer)
+
+            await process_deathlist(info, answer)
+
+            process_capturetimer(info, answer)
+
+            process_bikerinfo(info)
+
+            process_marker(info, answer)
+
+            answer["timestamp"] = time.time()
+
+            return answer
 
 
 @app.exception(NotFound)
 async def test(request, exception):
-    global last_cl
-    global last_c
-    global last_changed
-    global balance
-    global death_list
-    global marker
-    global bikers
-    global textdraw
-
-    timer = time.time()
     info = js.loads(urllib.parse.unquote(request.path[1:]))
     answer = {}
     answer["capter"] = ""
-    if 'auth' in info:
-        if last_changed != os.stat("config/whitelist.txt").st_mtime:
-            with io.open('config/whitelist.txt') as file:
-                for line in file:
-                    x = line.split()
-                    if len(x) == 2:
-                        users.update({x[0]: x[1]})
-            last_changed = os.stat("config/whitelist.txt").st_mtime
-
-        if info['auth'] not in users:
-            return json({"result": "wrong user"})
-        else:
-            if info['password'] == users[info['auth']]:
-                return json({"result": "ok", "like": list(users.keys()), "delay": DELAY})
-            else:
-                return json({"result": "wrong password", "delay": DELAY})
-        return json({"result": "error", "timestamp": 'Go away!'})
-    else:
-        if users[info['creds']['nick']] == info['creds']['pass']:
-            if time.time() - last_c > 300:
-                last_c = time.time()
-                del_nicks_list = []
-                del_veh_list = []
-                for k, v in nicks.items():
-                    if time.time() - v["timestamp"] > 300:
-                        del_nicks_list.append(k)
-                for k in del_nicks_list:
-                    if k in nicks:
-                        del nicks[k]
-                for k, v in vehicles.items():
-                    if time.time() - v["timestamp"] > 300:
-                        del_veh_list.append(k)
-                for k in del_veh_list:
-                    if k in vehicles:
-                        del vehicles[k]
-
-            if "deathList" in info["data"]:
-                for i in info["data"]["deathList"]:
-                    if len(death_list) == 5:
-                        death_list.pop(0)
-                    if i["type"] == "died":
-                        score = 0
-                        if 'killerNick' in i:
-                            text = f"DIED: {i['killerNick']} ubil {i['killedNick']} iz {i['weapon']}"
-                        else:
-                            text = f"{i['killedNick']} ubil sebya"
-                    elif i["type"] == "afk":
-                        score = 0.5
-                        if i["killedNick"] in users:
-                            score = -1
-                        if i["killedNick"] in admins:
-                            score = -10
-                        text = f"KILL V AFK: {i['killerNick']} ubil {i['killedNick']} iz {i['weapon']}, zas4itano {score} o4kov."
-                    elif i["type"] == "normal":
-                        if i['skin'] in skins_army:
-                            score = 3
-                        elif i['skin'] in skins_ghetto:
-                            score = 2
-                        elif i['skin'] in skins_gos:
-                            score = 5
-                        elif i['skin'] in skins_bikers:
-                            score = 2
-                        else:
-                            score = 1
-
-                        if i["killedNick"] in users:
-                            score = -1
-                        if i["killedNick"] in admins:
-                            score = -10
-                        if i["lvl"] < 4 and i["lvl"] > 0:
-                            score = score * 2
-                        text = f"4estniy kill: {i['killerNick']} ubil {i['killedNick']} iz {i['weapon']}, zas4itano {score} o4kov."
-                    elif i["type"] == "dm":
-                        score = 5
-                        text = f"DM: {i['killerNick']} posadil {i['killedNick']} na {i['lvl']}: {i['weapon']}."
-
-                    death_list.append({"time": time.time(), "data": i, "text": text, "score": score})
-
-                    query = "INSERT INTO kills(timestamp, killer, killed, weapon, skin, lvl, type, score) VALUES (:timestamp, :killer, :killed, :weapon, :skin, :lvl, :type, :score)"
-                    killer = "nil"
-                    if "killerNick" in i:
-                        killer = i["killerNick"]
-
-                    values = {
-                        "timestamp": ctime(),
-                        "killer": killer,
-                        "killed": i["killedNick"],
-                        "weapon": i["weapon"],
-                        "skin": i["skin"],
-                        "lvl": i["lvl"],
-                        "type": i["type"],
-                        "score": score
-                    }
-
-                    await database.execute(query=query, values=values)
-
-            if "dmg_in" in info["data"]:
-                query = "INSERT INTO dmg_in(timestamp, nick, damage) VALUES (:timestamp, :nick, :damage)"
-                values = {
-                    "timestamp": ctime(),
-                    "nick": info['creds']['nick'],
-                    "damage": info["data"]["dmg_in"]
-                }
-
-                await database.execute(query=query, values=values)
-
-            if "dmg_out" in info["data"]:
-                query = "INSERT INTO dmg_out(timestamp, nick, damage) VALUES (:timestamp, :nick, :damage)"
-                values = {
-                    "timestamp": ctime(),
-                    "nick": info['creds']['nick'],
-                    "damage": info["data"]["dmg_out"]
-                }
-
-                await database.execute(query=query, values=values)
-
-            if 'capter' in info["data"]:
-                capter = info["data"]["capter"]
-                if time.time() - last_cl > 15:
-                    last_cl = time.time()
-                    del_capters_list = []
-                    for k in capters.keys():
-                        if time.time() - capters[k]["lastseen"] > 15:
-                            del_capters_list.append(k)
-                    for k in del_capters_list:
-                        if k in capters:
-                            del capters[k]
-                            print(k + "deleted")
-                        if k in capterslist:
-                            capterslist.remove(k)
-                            print(k + "deleted")
-                if info["data"]["type"] == "register":
-                    if capter in capters:
-                        del capters[capter]
-                    if capter in capterslist:
-                        capterslist.remove(capter)
-                    capters[capter] = {'lastcapt': 0, 'lastseen': time.time()}
-                    capterslist.append(capter)
-                    answer["capter"] = "Go capture! " + str(len(capters))
-                if info["data"]["type"] == "ready":
-                    if capters[capter] == None:
-                        capters[capter] = {'lastcapt': 0, 'lastseen': time.time()}
-                    capters[capter]['lastseen'] = time.time()
-                    ind = capterslist.index(capter)
-                    if ind <= 5:
-                        if int(time.time()) % 5 == ind and time.time() - capters[capter]["lastcapt"] > 4:
-                            capters[capter]["lastcapt"] = time.time()
-                            answer["capter"] = "GO"
-                        else:
-                            answer["capter"] = "WAIT"
-                    else:
-                        if int(time.time() + 0.5) % 5 == ind % 5 and time.time() - capters[capter]["lastcapt"] > 4:
-                            capters[capter]["lastcapt"] = time.time()
-                            answer["capter"] = "GO"
-                        else:
-                            answer["capter"] = "WAIT"
-                if info["data"]["type"] == "unregister":
-                    if capter in capters:
-                        del capters[capter]
-                    if capter in capterslist:
-                        capterslist.remove(capter)
-                    answer["capter"] = "END"
-            if 'sender' in info["data"]:
-                nicks.update({info["data"]['sender']['sender']: {
-                    'timestamp': time.time(),
-                    'heading': info["data"]['sender']['heading'],
-                    'health': info["data"]['sender']['health'],
-                    'x': info["data"]['sender']['pos']['x'],
-                    'y': info["data"]['sender']['pos']['y'],
-                    'z': info["data"]['sender']['pos']['z'],
-                }})
-            if 'vehicles' in info["data"]:
-                inf = info["data"]['vehicles']
-                for a in inf:
-                    if a and a['id'] not in vehicles:
-                        if 'health' in a:
-                            vehicles.update({a['id']: {
-                                'timestamp': time.time(),
-                                'heading': a['heading'],
-                                'engine': a['engine'],
-                                'health': a['health'],
-                                'healthstamp': time.time(),
-                                'x': a['pos']['x'],
-                                'y': a['pos']['y'],
-                                'z': a['pos']['z'],
-                            }})
-                        else:
-                            vehicles.update({a['id']: {
-                                'timestamp': time.time(),
-                                'heading': a['heading'],
-                                'engine': a['engine'],
-                                'x': a['pos']['x'],
-                                'health': 'xz',
-                                'healthstamp': time.time(),
-                                'y': a['pos']['y'],
-                                'z': a['pos']['z'],
-                            }})
-                    else:
-                        if vehicles[a['id']]['timestamp'] < time.time():
-                            if 'health' in a:
-                                vehicles.update({a['id']: {
-                                    'timestamp': time.time(),
-                                    'heading': a['heading'],
-                                    'engine': a['engine'],
-                                    'health': a['health'],
-                                    'healthstamp': time.time(),
-                                    'x': a['pos']['x'],
-                                    'y': a['pos']['y'],
-                                    'z': a['pos']['z'],
-                                }})
-                            else:
-                                vehicles.update({a['id']: {
-                                    'timestamp': time.time(),
-                                    'heading': a['heading'],
-                                    'engine': a['engine'],
-                                    'health': vehicles[a['id']]['health'],
-                                    'healthstamp': vehicles[a['id'
-                                    ]]['healthstamp'],
-                                    'x': a['pos']['x'],
-                                    'y': a['pos']['y'],
-                                    'z': a['pos']['z'],
-                                }})
-
-            if "timeleft_type" in info["data"]:
-                if "time" not in capture:
-                    capture["time"] = time.time()
-                    capture["type"] = info["data"]["timeleft_type"]
-                else:
-                    if capture["type"] == info["data"]["timeleft_type"]:
-                        if capture["type"] == 25:
-                            if time.time() - capture["time"] > 3600:
-                                capture["time"] = time.time()
-                        elif capture["type"] == 10:
-                            if time.time() - capture["time"] > 3600:
-                                capture["time"] = time.time()
-                        elif capture["type"] == 2:
-                            if time.time() - capture["time"] > 100:
-                                capture["time"] = time.time()
-                        elif capture["type"] == 0:
-                            if time.time() - capture["time"] > 3600:
-                                capture["time"] = time.time()
-                    else:
-                        if time.time() - capture["time"] > 60:
-                            capture["time"] = time.time()
-                            capture["type"] = info["data"]["timeleft_type"]
-
-            if "textdraw" in info["data"]:
-                if info["data"]["textdraw"]["text"].find(os.environ["curb"]) != -1:
-                    td = re.match(bikers_textdraw, info["data"]["textdraw"]["text"])
-                    if textdraw["timestamp_cr"] == -1:
-                        textdraw["timestamp_cr"] = ctime()
-                    textdraw["attacker"] = td[1]
-                    textdraw["attacker_kills"] = int(td[2])
-                    textdraw["defender"] = td[3]
-                    textdraw["defender_kills"] = int(td[4])
-                    textdraw["capture_id"] = int(td[5])
-
-            if "getDeathList" in info["data"]:
-                answer["deathList"] = death_list
-
-            if 'bikerinfo' in info["data"]:
-                short = info["data"]["bikerinfo"]
-                if "warehouse_simple" in short:
-                    warehouse.update({"timestamp": ctime(), "warehouse": int(short["warehouse_simple"]["wh"])})
-
-                if "warehouse" in short:
-                    short_data = short["warehouse"]["data"]
-                    warehouse.update(
-                        {"timestamp": ctime(), "warehouse": int(short_data["wh"]), "max": int(short_data["wh_all"])})
-                    warehouse_rest.update(
-                        {"timestamp": ctime(), "heal": int(short_data["heal"]), "heal_max": int(short_data["heal_all"]),
-                         "alk": int(short_data["alk"]), "alk_all": int(short_data["alk_all"]),
-                         "benz": int(short_data["benz"]), "benz_all": int(short_data["benz_all"])})
-                if "capture" in short:
-                    short_capt = short["capture"]["data"]
-                    capture_data.update({"timestamp": ctime()})
-                    for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                        capture_data.update({bid: {"t": short_capt[bid]["type"], "c": short_capt[bid]["control"]}})
-                if "capture_next" in short:
-                    capture_next.update({"timestamp": ctime(), "next": ctime() + int(short["capture_next"]["next"])})
-
-            if 'marker' in info["data"]:
-                marker = {
-                    "data": info["data"]["marker"],
-                    "timestamp": ctime()
-                }
-
-            if marker != {}:
-                if ctime() - marker["timestamp"] > 30:
-                    marker = {}
-                elif "marker_remove" in info["data"]:
-                    marker = {}
-
-            if marker != {}:
-                answer["marker"] = marker
-
-            if "bikers" in info["data"]:
-                bikers = info["data"]["bikers"]
-
-            answer["capture"] = capture.copy()
-            if "type" in answer["capture"]:
-                if answer["capture"]["type"] <= 0:
-                    answer["capture"]["type"] = 0
-            if info["data"]['request'] == 0:
-                answer["timestamp"] = time.time()
-            elif info["data"]['request'] == 1:
-                answer["timestamp"] = time.time()
-                answer["nicks"] = nicks
-                answer["vehicles"] = vehicles
-            return json(answer)
-            # server.send_message(client, str.encode())
-            # print ('Client(%d) said: %s' % (client['id'], message))
-            # print ('Client(%d) answered: %s' % (client['id'], str.encode(js.dumps(answer))))
-    return text("error")
-
-
-def startupCheck(PATH):
-    if os.path.exists(PATH) and os.access(PATH, os.R_OK):
-        # checks if file exists
-        print("File exists and is readable")
-    else:
-        print("Either file is missing or is not readable, creating file...")
-        with io.open(PATH, 'w') as db_file:
-            db_file.write(js.dumps({}))
-
-
-def bikerinfo():
-    import dico
-
-    def unix2HM(unix):
-        return datetime.datetime.utcfromtimestamp(unix).astimezone(pytz.timezone("Europe/Moscow")).strftime("%H:%M")
-
-    def getCoolK(price):
-        price = int(price)
-        price = "%.1f" % (price / 1000)
-        return price.replace(".0", "") + "K"
-
-    api = dico.APIClient(os.environ["discord"], base=dico.HTTPRequest)
-
-    channels = {
-        "warehouse_guns": api.request_channel(os.environ["warehouse_guns"]),
-        "warehouse_all": api.request_channel(os.environ["warehouse_all"]),
-        "capture_next": api.request_channel(os.environ["capture_next"]),
-        "capture_info": api.request_channel(os.environ["capture_info"]),
-        "capture_emojis": api.request_channel(os.environ["capture_emojis"]),
-        "capture_status": api.request_channel(os.environ["capture_status"]),
-        "capture_letters": api.request_channel(os.environ["capture_letters"]),
-    }
-
-    last_info = {
-        "warehouse_guns": "",
-        "warehouse_all": "",
-        "capture_next": "",
-        "capture_info": "",
-        "capture_emojis": "",
-        "capture_status": "",
-        "capture_letters": "",
-    }
-
-    emojis = {"Hells Angels MC": "\U0001F170",
-              "Mongols MC": "\U0001F42D",
-              "Pagans MC": "\U0001F43C",
-              "Outlaws MC": "\U0001F414",
-              "Sons of Silence MC": "\U0001F409",
-              "Warlocks MC": "\U00002694",
-              "Highwaymen MC": "\U0001F6B5",
-              "Bandidos MC": "\U0001F171",
-              "Free Souls MC": "\U0001F921",
-              "Vagos MC": "\U0001F913",
-              "cur": "\U00002705"}
-
-    def set(key, name):
-        if name != last_info[key]:
-            print(channels[key].edit(name=name))
-            last_info[key] = name
-            time.sleep(45)
-
-    while True:
-        if warehouse["timestamp"] != 0:
-            string = f"\U0001F52B >> {getCoolK(warehouse['warehouse'])} << {unix2HM(warehouse['timestamp'])}"
-            set("warehouse_guns", string)
-        if warehouse_rest["timestamp"] != 0:
-            string = f"\U0001F37A{warehouse_rest['alk']}\U0001F37A—\U000026FD{getCoolK(warehouse_rest['benz'])}\U000026FD— {unix2HM(warehouse_rest['timestamp'])}"
-            set("warehouse_all", string)
-        if capture_data["timestamp"] != 0:
-            control = 0
-            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                if capture_data[bid]["c"] == os.environ["curb"]:
-                    control += 1
-            st_own = ""
-            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                st_own += capture_data[bid]["c"][0]
-                if bid != "s2":
-                    st_own += "—"
-            st_em = ""
-            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                st_em += emojis[capture_data[bid]["c"]]
-            st_st = ""
-            for bid in ["f0", "f1", "f2", "f3", "f4", "s0", "s1", "s2"]:
-                if capture_data[bid]["t"] == "r":
-                    st_st += "\U0001F534"
-                else:
-                    st_st += "\U000026AA"
-                    pass
-
-            string = f"/capture >> {control}/8 << {unix2HM(capture_data['timestamp'])}"
-            set("capture_info", string)
-            set("capture_emojis", st_em)
-            set("capture_letters", st_own)
-            set("capture_status", st_st)
-
-        if capture_next["timestamp"] != 0 and capture_next["next"] > ctime():
-            string = f"next >> {unix2HM(capture_next['next'])}"
-            set("capture_next", string)
-        else:
-            if "type" in capture:
-                timeleft = capture["time"] + 60 * capture["type"] - ctime()
-                if timeleft > 0:
-                    if capture["type"] == 25:
-                        string = f"\U0001F624 начало ч. {15 - int((ctime() - capture['time']) / 60)}м << {unix2HM(ctime())}"
-                        set("capture_next", string)
-                    elif capture['type'] == 10:
-                        string = f"\U0001F621 конец ч. {10 - int((ctime() - capture['time']) / 60)}м << {unix2HM(ctime())}"
-                        set("capture_next", string)
-                    else:
-                        string = f"\U0001F92C пот ост. {2 - int((ctime() - capture['time']) / 60)}м << {unix2HM(ctime())}"
-                        set("capture_next", string)
-                else:
-                    string = f"next >> ??"
-                    set("capture_next", string)
-            else:
-                string = f"next >> ??"
-                set("capture_next", string)
-        time.sleep(100)
-
-
-def captureinfo():
-    import dico
-    import yaml
-
-    class MyDumper(yaml.Dumper):
-        def increase_indent(self, flow=False, indentless=False):
-            return super(MyDumper, self).increase_indent(flow, False)
-
-    def getDateMoscow(unix):
-        return datetime.datetime.utcfromtimestamp(unix).astimezone(pytz.timezone("Europe/Moscow")).strftime(
-            "%Y-%m-%d %H:%M:%S")
-
-    class capt:
-        def __init__(self, api, channel, started, reason):
-            self.api = api
-            self.time = time.time()
-            self.chn = channel
-            self.str = "ПОДНЯТЬ ЩИТЫ "
-            self.ids = ["LV", "SF", "LS", "NEW SF", "xz"]
-            self.started = started
-            self.started_reason = reason
-
-            twinkss = {}
-
-            with io.open('config/discord.json') as file:
-                twinkss = js.loads(file.read())
-
-            for k, id in twinkss.items():
-                self.str = self.str + f"<@{id}> "
-            self.pred = self.str
-            self.msg = int(api.create_message(self.chn, content=self.str).id)
-            self.pred_bikers = {}
-            self.update()
-
-        def genCaptureYaml(self, bikers):
-            foo = {
-                "id": self.ids[textdraw["capture_id"]],
-                "timing": time.time(),
-                "explain": {
-                    "started": getDateMoscow(self.started),
-                    "reason": self.started_reason,
-                },
-                "status": {
-                    "status": getStatus(),
-                    "timing": "?",
-                    "end": "?",
-                },
-                "players": {
-                    "attackers": {
-                        "count": 0,
-                        "name": textdraw["attacker"],
-                        "kills": textdraw["attacker_kills"],
-                        "list": []
-                    },
-                    "defenders": {
-                        "count": 0,
-                        "name": textdraw["defender"],
-                        "kills": textdraw["defender_kills"],
-                        "list": []
-                    }
-                }
-            }
-
-            if "type" in capture:
-                foo["status"]["timing"] = str(datetime.timedelta(seconds=int(capture["time"] + capture["type"] * 60 + 5 - time.time())))
-                foo["status"]["end"] = getDateMoscow(capture["time"] + capture["type"] * 60 + 5)
-
-            if getStatus() == "active_textdraw":
-                foo["status"]["timing"] = "~~~" + str(datetime.timedelta(seconds=int(textdraw["timestamp_cr"] + 25 * 60 - time.time())))
-                foo["status"]["end"] = '~~~' + getDateMoscow(textdraw["timestamp_cr"] + 25*60)
-
-            if getStatus() == "end" or getStatus() == "unknown":
-                del foo["status"]["timing"]
-                 
-                if "type" in capture and capture["time"] + 300 > ctime():
-                    if capture["type"] == -1:
-                        foo["status"]["status"] = "WIN"
-
-                    elif capture["type"] == -2:
-                        foo["status"]["status"] = "LOSE"
-
-            for key in bikers.keys():
-                for index in sorted(list(dict(bikers[key]).keys()), key=lambda x: int(x)):
-                    foo["players"][key]["list"].append(bikers[key][index])
-                foo["players"][key]["count"] = len(foo["players"][key]["list"])
-
-            return f"```yaml\n{yaml.dump(foo, Dumper=MyDumper, sort_keys=False)}```"
-
-        def update(self):
-            if getStatus() == "active" or getStatus() == "active_textdraw":
-                to_send = self.genCaptureYaml(bikers)
-                if self.str != to_send:
-                    self.str = to_send
-                    api.edit_message(self.chn, self.msg, content=self.pred + "\n" + self.str)
-                self.pred_bikers = bikers.copy()
-            else:
-                time.sleep(1)
-                api.edit_message(self.chn, self.msg, content=self.genCaptureYaml(self.pred_bikers))
-                time.sleep(1)
-                if "type" in capture and capture["time"] + 300 > ctime():
-                    if capture["type"] == -1:
-                        api.create_reaction(self.chn, self.msg, "😎")
-                    elif capture["type"] == -2:
-                        api.create_reaction(self.chn, self.msg, "😡")
-                    else:
-                        api.create_reaction(self.chn, self.msg, "❓")
-                else:
-                    api.create_reaction(self.chn, self.msg, "❓")
-
-                if capture_next["next"] < ctime():
-                    capture_next["next"] = ctime() + 7200
-                    capture_next["timestamp"] = ctime()
-
-
-    def getStatus():
-        if "type" in capture:
-            if capture["type"] <= 0:
-                if ctime() - capture["time"] > 3600:
-                    if textdraw["timestamp_cr"] != -1:
-                        if textdraw["timestamp_cr"] + 25*60+25 > ctime():
-                            return "active_textdraw"
-                        else:
-                            return "unknown"
-                    else:
-                        return "end"
-                return "end"
-            if capture["time"] + capture["type"] * 60 + 25 > ctime():
-                return "active"
-            else:
-                if ctime() - capture["time"] > 3600:
-                    if textdraw["timestamp_cr"] != -1:
-                        if textdraw["timestamp_cr"] + 25*60+25 > ctime():
-                            return "active_textdraw"
-                        else:
-                            return "unknown"
-                    else:
-                        return "end"
-                else:
-                    return "unknown"
-        else:
-            if textdraw["timestamp_cr"] != -1:
-                if textdraw["timestamp_cr"] + 25*60+25 > ctime():
-                    return "active_textdraw"
-                else:
-                    return "unknown"
-            return "unknown"
-
-    api = dico.APIClient(os.environ["discord"], base=dico.HTTPRequest)
-    cur_capt = None
-    while True:
-        if 'cur_capt' in locals() and cur_capt:
-            cur_capt.update()
-            if getStatus() == "end" or getStatus() == "unknown":
-                cur_capt.update()
-                del cur_capt
-                textdraw["attacker"] = "?"
-                textdraw["attacker_kills"] = -1
-                textdraw["defender"] = "?"
-                textdraw["defender_kills"] = -1
-                textdraw["capture_id"] = -1
-                textdraw["timestamp_cr"] = -1
-        else:
-            if getStatus() == "active":
-                cur_capt = capt(api, os.environ["capture_channel"], capture["time"], str(capture["type"]))
-            elif getStatus() == "active_textdraw":
-                cur_capt = capt(api, os.environ["capture_channel"], ctime(), "textdraw with kills / no timing")
-
-
-        time.sleep(5)
-
-
-def topinfo():
-    import dico
-    import pickle
-    from schedule import every, repeat, run_pending
-    from table2ascii import table2ascii, PresetStyle, Alignment
-
-    con = sqlite3.connect('db/deathlist.db')
-    cur = con.cursor()
-
-    api = dico.APIClient(os.environ["discord"], base=dico.HTTPRequest)
-    chn = int(os.environ["top_channel"])
-
-    button = dico.Button(
-        style=dico.ButtonStyles.LINK, label="Подробнее", url=os.environ["top_link"]
-    )
-    row = dico.ActionRow(button)
-
-    button1 = dico.Button(
-        style=dico.ButtonStyles.LINK, label="Топ", url=os.environ["top_link_discord"]
-    )
-    row_top = dico.ActionRow(button1)
-
-    def read(filename):
-        with open(filename, 'rb') as filehandle:
-            return pickle.load(filehandle)
-
-    def dump(object, filename):
-        with open(filename, 'wb') as filehandle:
-            return pickle.dump(object, filehandle)
-
-    def genAsciiTable(result, limit=99):
-        body = []
-        sum = ["", os.environ["top_name"], 0, 0, 0, 0, 0]
-        header = ["№", "player", "score", "kills", "deaths", "K/D", "dm"]
-
-        last_output = table2ascii(
-            header=header,
-            body=body,
-            footer=sum,
-            first_col_heading=True
-        )
-
-        cur = 0
-        
-        for k, v in result.items():
-            body.append(
-                [k, v["killer"][:13], v["score"], v["kills"], v["deaths"], v["K/D"],
-                 v["demorgan"]])
-
-            sum[2] += v["score"]
-            sum[3] += v["kills"]
-            sum[4] += v["deaths"]
-            sum[5] = "{:.1f}".format(sum[3] / sum[4])
-            sum[6] += v["demorgan"]
-
-            new_output = table2ascii(
-                header=header,
-                body=body,
-                footer=sum,
-                first_col_heading=True,
-                alignments=[Alignment.LEFT] + [Alignment.LEFT] + [Alignment.RIGHT] * 5,
-            )
-            if len(new_output) > 1980 or cur == limit:
-                return last_output
-            else:
-                cur += 1
-                last_output = new_output
-
-        return last_output
-
-    try:
-        edit = read('top')
-    except FileNotFoundError:
-        dump({"all": 0, "week": 0, "day": 0}, 'top')
-        edit = read('top')
-
-    @repeat(every().day.at("01:40"))
-    def send_report():
-        day = datetime.datetime.now(pytz.timezone("Europe/Moscow"))
-        timestamp = datetime.datetime.now(pytz.timezone("Europe/Moscow")).replace(hour=5, minute=0, second=0,
-                                                                                  microsecond=0).timestamp()
-        top = getTop(cur, timestamp, False)
-
-        if len(top) > 0:
-            with io.open('config/discord.json') as file:
-                discord = js.loads(file.read())
-
-            embed = dico.Embed(
-                title=f"Доска почёта",
-                description=f"```markdown\n{genAsciiTable(getTop(cur, timestamp, False), 5)}```",
-                timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
-                color=0x4D220E,
-            )
-            embed.set_footer(text="Топ-5 за последние сутки")
-
-            if top[1]["killer"] in discord:
-                mention = f"<@{discord[top[1]['killer']]}> — герой дня! Поздравляем! Ура! Ура! Ура!"
-
-                api.create_message(os.environ["channel_flood"], content=str(mention), embed=embed, component=row_top)
-            else:
-                api.create_message(os.environ["channel_flood"], embed=embed, component=row_top)
-    
-    while True:
-        embed = dico.Embed(
-            title=f"За всё время",
-            description=f"```markdown\n{genAsciiTable(getTop(cur, 0, False))}```",
-            timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
-            color=0x348cb2,
-        )
-        embed.set_footer(text="Топ пользователей edith за всё время")
-        if edit["all"] == 0:
-            edit["all"] = int(api.create_message(chn, embed=embed).id)
-            dump(edit, "top")
-        else:
-            api.edit_message(chn, edit["all"], embed=embed)
-
-        timestamp = (datetime.datetime.now(pytz.timezone("Europe/Moscow")) - datetime.timedelta(
-            days=datetime.datetime.today().weekday())).replace(hour=5, minute=0, second=0, microsecond=0).timestamp()
-
-        embed = dico.Embed(
-            title=f"За неделю",
-            description=f"```markdown\n{genAsciiTable(getTop(cur, timestamp, False))}```",
-            timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
-            color=0x348cb2,
-        )
-        embed.set_footer(text="Топ пользователей edith за неделю")
-        if edit["week"] == 0:
-            edit["week"] = int(api.create_message(chn, embed=embed).id)
-            dump(edit, "top")
-        else:
-            api.edit_message(chn, edit["week"], embed=embed)
-
-        time.sleep(1)
-
-        day = datetime.datetime.now(pytz.timezone("Europe/Moscow"))
-        timestamp = datetime.datetime.now(pytz.timezone("Europe/Moscow")).replace(hour=5, minute=0, second=0,
-                                                                                  microsecond=0).timestamp()
-        embed = dico.Embed(
-            title=f"За сутки",
-            description=f"```markdown\n{genAsciiTable(getTop(cur, timestamp, False))}```",
-            timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
-            color=0x348cb2,
-        )
-        embed.set_footer(text="Топ пользователей edith за сутки (с 05:00)")
-        time.sleep(1)
-        if edit["day"] == 0:
-            edit["day"] = int(api.create_message(chn, embed=embed, component=row).id)
-            dump(edit, "top")
-        else:
-            api.edit_message(chn, edit["day"], embed=embed, component=row)
-
-        run_pending()
-
-        time.sleep(300)
+    return json(await process(info, answer))
 
 
 if __name__ == '__main__':
     database = Database('sqlite:///db/deathlist.db')
     asyncio.run(database.connect())
 
-    startupCheck("config/twinks.json")
+    startup_check("config/twinks.json")
     with open("config/twinks.json", "r") as fp:
         twink = js.load(fp)
 
@@ -1211,19 +409,32 @@ if __name__ == '__main__':
                 users.update({x[0]: x[1]})
 
     if str(os.environ["enable_bikerinfo"]) == "1":
-        bikerinfo_thread = threading.Thread(target=bikerinfo)
+        from bikerinfo import bikerinfo
+
+        bikerinfo_thread = threading.Thread(target=bikerinfo,
+                                            args=[warehouse, warehouse_rest, capture_data, capture, capture_next])
         bikerinfo_thread.daemon = True
         bikerinfo_thread.start()
 
     if str(os.environ["enable_captureinfo"]) == "1":
-        captureinfo_thread = threading.Thread(target=captureinfo)
+        from captureinfo import captureinfo
+
+        captureinfo_thread = threading.Thread(target=captureinfo,
+                                              args=[textdraw, bikers, capture, capture_next])
         captureinfo_thread.daemon = True
         captureinfo_thread.start()
 
     if str(os.environ["enable_top"]) == "1":
-        topinfo_thread = threading.Thread(target=topinfo)
+        from topinfo import topinfo
+
+        topinfo_thread = threading.Thread(target=topinfo, args=[twink])
         topinfo_thread.daemon = True
         topinfo_thread.start()
+
+    import top, crash_handle
+
+    app.blueprint(top.bp)
+    app.blueprint(crash_handle.bp)
 
     app.static('/resource', './resource')
     app.static('version.json', 'version.json')
