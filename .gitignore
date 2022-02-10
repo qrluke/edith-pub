@@ -1,2 +1,8 @@
+#prod compose file
 docker-compose-prod.yml
+#testing compose file
 docker-compose-test.yml
+#pickle dump file with list of proccessed threads for jb.py
+sent
+#pickle dump file with dict in which the ids of messages for updating the top are stored
+top
