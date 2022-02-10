@@ -381,7 +381,7 @@ function main()
       return
     end
     while sampIsDialogActive() do
-      wait(100)
+      wait(0)
     end
     updateMenu()
     submenus_show(mod_submenus_sa, "{348cb2}EDITH v." .. thisScript().version,
