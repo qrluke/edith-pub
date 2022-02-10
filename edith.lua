@@ -15,6 +15,8 @@ local autoUpdateLink = ip .. "version.json" --ссылка на json с информацией об ак
 local autoUpdateScriptUrl = "" --ссылка на информацию о скрипте
 local autoUpdateChangelogCommand = "" --команда по которой откроется changelog
 
+local ckey1, ckey2 = nil, nil -- кастомный ключ для cipherModule()
+
 local enableErrorReporter = true --включить подгрузку фонового скрипта, который будет отправлять на сервер информацию о вылетах? информация обратывается на сервере через handle_crash_report(), в моём случае используется discord webhook
 
 local changelog_menu = {}
@@ -211,7 +213,7 @@ function main()
   rcapture = rcaptureModule()
   getgun = getgunModule()
   tier = tierModule()
-  cipher = cipherModule()
+  cipher = cipherModule(ckey1, ckey2)
   changeweapon = changeweaponModule()
   hideweapon = hideweaponModule()
   gzcheck = gzcheckModule()
@@ -3241,10 +3243,10 @@ end
 --------------------------------------------------------------------------------
 -------------------------------------CIPHER-------------------------------------
 --------------------------------------------------------------------------------
-function cipherModule()
+function cipherModule(key1, key2)
   -- This is your secret 67-bit key (any random bits are OK)
-  local Key53 = 8186454 + 421123564365098
-  local Key14 = 4842
+  local Key53 = key1 or 8186454 + 421123564365098
+  local Key14 = key2 or 4842
 
   local inv256
 
