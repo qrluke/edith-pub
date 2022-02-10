@@ -13,6 +13,7 @@ import threading
 import urllib.parse
 from aiohttp import web
 from databases import Database
+from discord_webhook import DiscordWebhook, DiscordEmbed
 
 last_cl = time.time()
 last_c = time.time()
@@ -104,7 +105,7 @@ def to_fixed(num, digits=0):
 twink = {}
 
 
-def getTop(timestamp, html=False):
+def getTop(cur, timestamp, html=False):
     day = []
     for i in cur.execute(
             "SELECT `killer`,  SUM(score) AS `score`, COUNT(*) AS `kills` FROM `kills` WHERE (`type` = 'normal' or `type` = 'dm') and `timestamp` > :unix  GROUP BY  `killer` ORDER BY `score` DESC",
@@ -195,7 +196,7 @@ def getTop(timestamp, html=False):
         return top
 
 
-def getAntiTop(timestamp, html=False, min=3):
+def getAntiTop(cur, timestamp, html=False, min=3):
     day = []
     for i in cur.execute(
             "SELECT `killer`, COUNT(*) AS `kills` FROM `kills` WHERE `type` = 'died' and `timestamp` > :unix  GROUP BY  `killer` ORDER BY `kills` DESC",
@@ -224,7 +225,7 @@ def getAntiTop(timestamp, html=False, min=3):
         return top
 
 
-def getAdmTop(timestamp, html=False):
+def getAdmTop(cur, timestamp, html=False):
     day = []
     for i in cur.execute(
             "SELECT `killed`, SUM(lvl) AS `min` FROM `kills` WHERE `type` = 'dm' and `timestamp` > :unix  GROUP BY  `killed` ORDER BY `min` DESC",
@@ -252,6 +253,38 @@ def getAdmTop(timestamp, html=False):
         return top
 
 
+@app.route('/crash_report/<data:[^/].*?>')
+async def handle_crash_report(request, data: str):
+    crash = js.loads(urllib.parse.unquote(data))
+
+    webhook = DiscordWebhook(url=os.environ["crash_webhook"])
+
+    crash['data'] = crash['data'].replace('$$$$n', '\n').replace('$$$$t', '\t')
+
+    embed = DiscordEmbed(
+        description=f"```lua\n{crash['data']}```",
+        title=f"New crash report",
+        color=242424,
+        timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime())
+    )
+
+    embed.set_author(
+        name=crash["nick"],
+    )
+
+    embed.set_footer(text=f"Автоматически отправленное сообщение об ошибке")
+
+    embed.add_embed_field(name="edith version", value=crash["sv"])
+    embed.add_embed_field(name="moon version", value=crash["v"])
+    embed.add_embed_field(name="Online", value=str(datetime.timedelta(seconds=int(crash["clock"]))))
+
+    webhook.add_embed(embed)
+    webhook.execute()
+
+    return text('ok')
+
+
+
 @app.route('/top')
 async def test(request):
     global twink
@@ -263,20 +296,20 @@ async def test(request):
     if day.hour < 5:
         timestamp = timestamp - 86400
 
-    day_top = getTop(timestamp, True)
-    day_anti_top = getAntiTop(timestamp, True)
-    day_adm_top = getAdmTop(timestamp, True)
+    day_top = getTop(cur, timestamp, True)
+    day_anti_top = getAntiTop(cur, timestamp, True)
+    day_adm_top = getAdmTop(cur, timestamp, True)
 
     timestamp = (datetime.datetime.now(pytz.timezone("Europe/Moscow")) - datetime.timedelta(
         days=datetime.datetime.today().weekday())).replace(hour=5, minute=0, second=0, microsecond=0).timestamp()
 
-    week_top = getTop(timestamp, True)
-    week_anti_top = getAntiTop(timestamp, True)
-    week_adm_top = getAdmTop(timestamp, True)
+    week_top = getTop(cur, timestamp, True)
+    week_anti_top = getAntiTop(cur, timestamp, True)
+    week_adm_top = getAdmTop(cur, timestamp, True)
 
-    all_top = getTop(0, True)
-    anti_top = getAntiTop(0, True)
-    all_adm_top = getAdmTop(0, True)
+    all_top = getTop(cur, 0, True)
+    anti_top = getAntiTop(cur, 0, True)
+    all_adm_top = getAdmTop(cur, 0, True)
 
     b = {}
     i = 1
@@ -375,9 +408,10 @@ marker = {}
 bikers = {}
 
 textdraw = {}
-textdraw["attacker"] = "Free Souls MC"
+textdraw["timestamp_cr"] = -1
+textdraw["attacker"] = "?"
 textdraw["attacker_kills"] = -1
-textdraw["defender"] = "Mongols MC"
+textdraw["defender"] = "?"
 textdraw["defender_kills"] = -1
 textdraw["capture_id"] = -1
 
@@ -621,17 +655,12 @@ async def test(request, exception):
                                     'y': a['pos']['y'],
                                     'z': a['pos']['z'],
                                 }})
+
             if "timeleft_type" in info["data"]:
                 if "time" not in capture:
                     capture["time"] = time.time()
                     capture["type"] = info["data"]["timeleft_type"]
-
-                    if capture["type"] == 0:
-                        if capture_next["next"] < ctime():
-                            capture_next["next"] = ctime() + 7200
-                            capture_next["timestamp"] = ctime()
                 else:
-                    # wtf is this?
                     if capture["type"] == info["data"]["timeleft_type"]:
                         if capture["type"] == 25:
                             if time.time() - capture["time"] > 3600:
@@ -653,6 +682,8 @@ async def test(request, exception):
             if "textdraw" in info["data"]:
                 if info["data"]["textdraw"]["text"].find(os.environ["curb"]) != -1:
                     td = re.match(bikers_textdraw, info["data"]["textdraw"]["text"])
+                    if textdraw["timestamp_cr"] == -1:
+                        textdraw["timestamp_cr"] = ctime()
                     textdraw["attacker"] = td[1]
                     textdraw["attacker_kills"] = int(td[2])
                     textdraw["defender"] = td[3]
@@ -701,7 +732,7 @@ async def test(request, exception):
             if "bikers" in info["data"]:
                 bikers = info["data"]["bikers"]
 
-            answer["capture"] = capture
+            answer["capture"] = capture.copy()
             if "type" in answer["capture"]:
                 if answer["capture"]["type"] <= 0:
                     answer["capture"]["type"] = 0
@@ -855,28 +886,36 @@ def captureinfo():
             self.api = api
             self.time = time.time()
             self.chn = channel
-            self.str = "ПОДНЯТЬ ЩИТЫ"
+            self.str = "ПОДНЯТЬ ЩИТЫ "
             self.ids = ["LV", "SF", "LS", "NEW SF", "xz"]
             self.started = started
             self.started_reason = reason
-            self.msg = api.create_message(self.chn, content=self.str).id
+
+            twinkss = {}
+
+            with io.open('config/discord.json') as file:
+                twinkss = js.loads(file.read())
+
+            for k, id in twinkss.items():
+                self.str = self.str + f"<@{id}> "
+            self.pred = self.str
+            self.msg = int(api.create_message(self.chn, content=self.str).id)
             self.pred_bikers = {}
             self.update()
 
         def genCaptureYaml(self, bikers):
             foo = {
                 "id": self.ids[textdraw["capture_id"]],
+                "timing": time.time(),
                 "explain": {
                     "started": getDateMoscow(self.started),
                     "reason": self.started_reason,
                 },
                 "status": {
                     "status": getStatus(),
-                    "timing": str(
-                        datetime.timedelta(seconds=int(capture["time"] + capture["type"] * 60 + 5 - time.time()))),
-                    "end": getDateMoscow(capture["time"] + capture["type"] * 60 + 5),
+                    "timing": "?",
+                    "end": "?",
                 },
-                "timing": time.time(),
                 "players": {
                     "attackers": {
                         "count": 0,
@@ -893,13 +932,23 @@ def captureinfo():
                 }
             }
 
+            if "type" in capture:
+                foo["status"]["timing"] = str(datetime.timedelta(seconds=int(capture["time"] + capture["type"] * 60 + 5 - time.time())))
+                foo["status"]["end"] = getDateMoscow(capture["time"] + capture["type"] * 60 + 5)
+
+            if getStatus() == "active_textdraw":
+                foo["status"]["timing"] = "~~~" + str(datetime.timedelta(seconds=int(textdraw["timestamp_cr"] + 25 * 60 - time.time())))
+                foo["status"]["end"] = '~~~' + getDateMoscow(textdraw["timestamp_cr"] + 25*60)
+
             if getStatus() == "end" or getStatus() == "unknown":
                 del foo["status"]["timing"]
+                 
+                if "type" in capture and capture["time"] + 300 > ctime():
+                    if capture["type"] == -1:
+                        foo["status"]["status"] = "WIN"
 
-            if capture["type"] == -1:
-                foo["status"]["status"] = "WIN"
-            elif capture["type"] == -2:
-                foo["status"]["status"] = "LOSE"
+                    elif capture["type"] == -2:
+                        foo["status"]["status"] = "LOSE"
 
             for key in bikers.keys():
                 for index in sorted(list(dict(bikers[key]).keys()), key=lambda x: int(x)):
@@ -909,21 +958,62 @@ def captureinfo():
             return f"```yaml\n{yaml.dump(foo, Dumper=MyDumper, sort_keys=False)}```"
 
         def update(self):
-            if getStatus() == "active":
+            if getStatus() == "active" or getStatus() == "active_textdraw":
                 to_send = self.genCaptureYaml(bikers)
                 if self.str != to_send:
                     self.str = to_send
-                    api.edit_message(self.chn, self.msg, content=self.str)
-                self.pred_bikers = bikers
+                    api.edit_message(self.chn, self.msg, content=self.pred + "\n" + self.str)
+                self.pred_bikers = bikers.copy()
             else:
+                time.sleep(1)
                 api.edit_message(self.chn, self.msg, content=self.genCaptureYaml(self.pred_bikers))
+                time.sleep(1)
+                if "type" in capture and capture["time"] + 300 > ctime():
+                    if capture["type"] == -1:
+                        api.create_reaction(self.chn, self.msg, "😎")
+                    elif capture["type"] == -2:
+                        api.create_reaction(self.chn, self.msg, "😡")
+                    else:
+                        api.create_reaction(self.chn, self.msg, "❓")
+                else:
+                    api.create_reaction(self.chn, self.msg, "❓")
+
+                if capture_next["next"] < ctime():
+                    capture_next["next"] = ctime() + 7200
+                    capture_next["timestamp"] = ctime()
+
 
     def getStatus():
-        if capture["type"] <= 0:
-            return "end"
-        if capture["time"] + capture["type"] * 60 + 15 > time.time():
-            return "active"
+        if "type" in capture:
+            if capture["type"] <= 0:
+                if ctime() - capture["time"] > 3600:
+                    if textdraw["timestamp_cr"] != -1:
+                        if textdraw["timestamp_cr"] + 25*60+25 > ctime():
+                            return "active_textdraw"
+                        else:
+                            return "unknown"
+                    else:
+                        return "end"
+                return "end"
+            if capture["time"] + capture["type"] * 60 + 25 > ctime():
+                return "active"
+            else:
+                if ctime() - capture["time"] > 3600:
+                    if textdraw["timestamp_cr"] != -1:
+                        if textdraw["timestamp_cr"] + 25*60+25 > ctime():
+                            return "active_textdraw"
+                        else:
+                            return "unknown"
+                    else:
+                        return "end"
+                else:
+                    return "unknown"
         else:
+            if textdraw["timestamp_cr"] != -1:
+                if textdraw["timestamp_cr"] + 25*60+25 > ctime():
+                    return "active_textdraw"
+                else:
+                    return "unknown"
             return "unknown"
 
     api = dico.APIClient(os.environ["discord"], base=dico.HTTPRequest)
@@ -932,13 +1022,178 @@ def captureinfo():
         if 'cur_capt' in locals() and cur_capt:
             cur_capt.update()
             if getStatus() == "end" or getStatus() == "unknown":
+                cur_capt.update()
                 del cur_capt
+                textdraw["attacker"] = "?"
+                textdraw["attacker_kills"] = -1
+                textdraw["defender"] = "?"
+                textdraw["defender_kills"] = -1
+                textdraw["capture_id"] = -1
+                textdraw["timestamp_cr"] = -1
         else:
-            if "type" in capture and capture["type"] in [25, 10, 2] and capture["time"] + capture[
-                "type"] * 60 + 25 > time.time():
+            if getStatus() == "active":
                 cur_capt = capt(api, os.environ["capture_channel"], capture["time"], str(capture["type"]))
+            elif getStatus() == "active_textdraw":
+                cur_capt = capt(api, os.environ["capture_channel"], ctime(), "textdraw with kills / no timing")
+
+
+        time.sleep(5)
+
+
+def topinfo():
+    import dico
+    import pickle
+    from schedule import every, repeat, run_pending
+    from table2ascii import table2ascii, PresetStyle, Alignment
+
+    con = sqlite3.connect('db/deathlist.db')
+    cur = con.cursor()
+
+    api = dico.APIClient(os.environ["discord"], base=dico.HTTPRequest)
+    chn = int(os.environ["top_channel"])
+
+    button = dico.Button(
+        style=dico.ButtonStyles.LINK, label="Подробнее", url=os.environ["top_link"]
+    )
+    row = dico.ActionRow(button)
+
+    button1 = dico.Button(
+        style=dico.ButtonStyles.LINK, label="Топ", url=os.environ["top_link_discord"]
+    )
+    row_top = dico.ActionRow(button1)
+
+    def read(filename):
+        with open(filename, 'rb') as filehandle:
+            return pickle.load(filehandle)
+
+    def dump(object, filename):
+        with open(filename, 'wb') as filehandle:
+            return pickle.dump(object, filehandle)
+
+    def genAsciiTable(result, limit=99):
+        body = []
+        sum = ["", os.environ["top_name"], 0, 0, 0, 0, 0]
+        header = ["№", "player", "score", "kills", "deaths", "K/D", "dm"]
+
+        last_output = table2ascii(
+            header=header,
+            body=body,
+            footer=sum,
+            first_col_heading=True
+        )
+
+        cur = 0
+        
+        for k, v in result.items():
+            body.append(
+                [k, v["killer"][:13], v["score"], v["kills"], v["deaths"], v["K/D"],
+                 v["demorgan"]])
+
+            sum[2] += v["score"]
+            sum[3] += v["kills"]
+            sum[4] += v["deaths"]
+            sum[5] = "{:.1f}".format(sum[3] / sum[4])
+            sum[6] += v["demorgan"]
+
+            new_output = table2ascii(
+                header=header,
+                body=body,
+                footer=sum,
+                first_col_heading=True,
+                alignments=[Alignment.LEFT] + [Alignment.LEFT] + [Alignment.RIGHT] * 5,
+            )
+            if len(new_output) > 1980 or cur == limit:
+                return last_output
+            else:
+                cur += 1
+                last_output = new_output
+
+        return last_output
+
+    try:
+        edit = read('top')
+    except FileNotFoundError:
+        dump({"all": 0, "week": 0, "day": 0}, 'top')
+        edit = read('top')
+
+    @repeat(every().day.at("01:40"))
+    def send_report():
+        day = datetime.datetime.now(pytz.timezone("Europe/Moscow"))
+        timestamp = datetime.datetime.now(pytz.timezone("Europe/Moscow")).replace(hour=5, minute=0, second=0,
+                                                                                  microsecond=0).timestamp()
+        top = getTop(cur, timestamp, False)
+
+        if len(top) > 0:
+            with io.open('config/discord.json') as file:
+                discord = js.loads(file.read())
+
+            embed = dico.Embed(
+                title=f"Доска почёта",
+                description=f"```markdown\n{genAsciiTable(getTop(cur, timestamp, False), 5)}```",
+                timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
+                color=0x4D220E,
+            )
+            embed.set_footer(text="Топ-5 за последние сутки")
+
+            if top[1]["killer"] in discord:
+                mention = f"<@{discord[top[1]['killer']]}> — герой дня! Поздравляем! Ура! Ура! Ура!"
+
+                api.create_message(os.environ["channel_flood"], content=str(mention), embed=embed, component=row_top)
+            else:
+                api.create_message(os.environ["channel_flood"], embed=embed, component=row_top)
+    
+    while True:
+        embed = dico.Embed(
+            title=f"За всё время",
+            description=f"```markdown\n{genAsciiTable(getTop(cur, 0, False))}```",
+            timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
+            color=0x348cb2,
+        )
+        embed.set_footer(text="Топ пользователей edith за всё время")
+        if edit["all"] == 0:
+            edit["all"] = int(api.create_message(chn, embed=embed).id)
+            dump(edit, "top")
+        else:
+            api.edit_message(chn, edit["all"], embed=embed)
+
+        timestamp = (datetime.datetime.now(pytz.timezone("Europe/Moscow")) - datetime.timedelta(
+            days=datetime.datetime.today().weekday())).replace(hour=5, minute=0, second=0, microsecond=0).timestamp()
+
+        embed = dico.Embed(
+            title=f"За неделю",
+            description=f"```markdown\n{genAsciiTable(getTop(cur, timestamp, False))}```",
+            timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
+            color=0x348cb2,
+        )
+        embed.set_footer(text="Топ пользователей edith за неделю")
+        if edit["week"] == 0:
+            edit["week"] = int(api.create_message(chn, embed=embed).id)
+            dump(edit, "top")
+        else:
+            api.edit_message(chn, edit["week"], embed=embed)
 
         time.sleep(1)
+
+        day = datetime.datetime.now(pytz.timezone("Europe/Moscow"))
+        timestamp = datetime.datetime.now(pytz.timezone("Europe/Moscow")).replace(hour=5, minute=0, second=0,
+                                                                                  microsecond=0).timestamp()
+        embed = dico.Embed(
+            title=f"За сутки",
+            description=f"```markdown\n{genAsciiTable(getTop(cur, timestamp, False))}```",
+            timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
+            color=0x348cb2,
+        )
+        embed.set_footer(text="Топ пользователей edith за сутки (с 05:00)")
+        time.sleep(1)
+        if edit["day"] == 0:
+            edit["day"] = int(api.create_message(chn, embed=embed, component=row).id)
+            dump(edit, "top")
+        else:
+            api.edit_message(chn, edit["day"], embed=embed, component=row)
+
+        run_pending()
+
+        time.sleep(300)
 
 
 if __name__ == '__main__':
@@ -965,4 +1220,13 @@ if __name__ == '__main__':
         captureinfo_thread.daemon = True
         captureinfo_thread.start()
 
-    app.run(host='0.0.0.0', port=33333, auto_reload=True, debug=False)
+    if str(os.environ["enable_top"]) == "1":
+        topinfo_thread = threading.Thread(target=topinfo)
+        topinfo_thread.daemon = True
+        topinfo_thread.start()
+
+    app.static('/resource', './resource')
+    app.static('version.json', 'version.json')
+    app.static('edith.lua', 'edith.lua')
+
+    app.run(host='0.0.0.0', port=33333, auto_reload=False, debug=True)

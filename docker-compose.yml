@@ -9,12 +9,11 @@ services:
       - "33333:33333"
     restart: unless-stopped
     environment:
-      DELAY: 250
+      DELAY: 500
       # enable bikerinfo
       enable_bikerinfo: 0
-      # channel ids to rename
       warehouse_guns: 0
-      warehouse_all: 0 
+      warehouse_all: 0
       capture_next: 0
       capture_emojis: 0
       capture_info: 0
@@ -22,10 +21,18 @@ services:
       capture_letters: 0
       # enable captureinfo
       enable_captureinfo: 0
-      # channel id to send notifications to
       capture_channel: 0
+      # enable top discord
+      enable_top: 0
+      top_channel: 0
+      channel_flood: 0
+      top_name: "edith"
+      top_link: "http://URL:PORT/top"
       # discord bot api key for bikerinfo & captureinfo
       discord: "key"
+      top_link_discord: "link to discord channel with top"
+      # webhook url to send user's crash reports to
+      crash_webhook: "discord webhook url"
       # current club, used for bikerinfo & captureinfo
       curb: "Name MC"
     logging:

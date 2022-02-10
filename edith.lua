@@ -5,20 +5,22 @@
 
 script_name("E.D.I.T.H.")
 script_author("qrlk") --большая часть модулей самописная, часть взята из доработанных мной сторонних скриптов
-script_version("01.02.2022")
+script_version("09.02.2022-stable")
 script_description("Это модульный скрипт для небольших закрытых сообществ игроков. Идея в том, чтобы впихнуть в один скрипт все нужные конкретной группе игроков скрипты в виде модулей. Модули можно настраивать, а сам скрипт защитить паролем и обмениваться информацией через модуль clientModule(). Эту информацию можно использовать в модулях, например обмениваться местоположением членов группы, показывать общий килллист, считать статистику KDA на сервере...")
 script_url("https://github.com/qrlk/edith-pub")
 --script_properties("work-in-pause")
 
 --поменять
-local ip = "http://localhost:33333/"--ip и порт сервера server.py (python3 server.py после pip3 install -r requirements.txt)
-local remoteResourceURL = "http://XXXXXXXXXXX.XX/resource/edith/"--путь туда, где хостится папки resource/edith
-local serverAddress = "127.0.0.1"--сервер, где вы играете
+local ip = "http://localhost:33333/" --ip и порт сервера server.py (python3 server.py после pip3 install -r requirements.txt)
+local remoteResourceURL = ip .. "resource/edith/" --путь туда, где хостится папки resource/edith
+local serverAddress = "127.0.0.1" --сервер, где вы играете
 
-local enableAutoUpdate = false --включить автообновление?
-local autoUpdateLink = "" --ссылка на json с информацией об актуальной версии
+local enableAutoUpdate = true --включить автообновление?
+local autoUpdateLink = ip .. "version.json" --ссылка на json с информацией об актуальной версии
 local autoUpdateScriptUrl = "" --ссылка на информацию о скрипте
 local autoUpdateChangelogCommand = "" --команда по которой откроется changelog
+
+local enableErrorReporter = true --включить подгрузку фонового скрипта, который будет отправлять на сервер информацию о вылетах? информация обратывается на сервере через handle_crash_report(), в моём случае используется discord webhook
 
 local changelog_menu = {}
 function updatechangelog()
@@ -119,8 +121,66 @@ function onScriptTerminate(LuaScript, quitGame)
   end
 end
 --------------------------------------------------------------------------------
+--------------------------------ERROR REPORTING---------------------------------
+--------------------------------------------------------------------------------
+if enableErrorReporter then
+  local need_to_inject = true
+  for id = 1, 1000 do
+    local s = script.get(id)
+    if s then
+      if s.name == "edith-auto-error-reporter" and s.dead == false then
+        need_to_inject = false
+        print("exists")
+        break
+      end
+    end
+  end
+  if need_to_inject then
+    local reporter_script = [[
+require 'lib.moonloader'
+script_name("edith-auto-error-reporter")
+
+local cur_id = thisScript().id
+local ip = "REPORT_TO_URL"
+
+function main()
+  wait(-1)
+end
+
+function onSystemMessage(msg, type, s)
+  if s and s.name == "E.D.I.T.H." and type == 3 and not msg:find("Script died due to an error.") then
+    local asodkas, licenseid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    local licensenick = sampGetPlayerNickname(licenseid)
+
+    local t = {
+      data = msg:gsub("\n", "$$$$n"):gsub("\t", "$$$$n"),
+      type = "error",
+      nick = licensenick,
+      clock = os.clock(),
+      v = getMoonloaderVersion(),
+      sv = s.version
+    }
+
+    downloadUrlToFile(ip .. encodeJson(t))
+    print(ip .. encodeJson(t))
+  end
+end
+  ]]
+    reporter_script = reporter_script:gsub("REPORT_TO_URL", ip .. "crash_report/")
+    local fn = os.tmpname()
+    injection = io.open(fn, "w+")
+    injection:write(reporter_script)
+    injection:close()
+    script.load(fn)
+    os.remove(fn)
+  end
+end
+--------------------------------------------------------------------------------
 --------------------------------------MAIN--------------------------------------
 --------------------------------------------------------------------------------
+local threads = {}
+local tempThreads = {}
+
 function main()
   if not isSampfuncsLoaded() or not isSampLoaded() then
     return
@@ -130,6 +190,7 @@ function main()
   end
   if force_unload then
     wait(math.random(1, 2) * 1000)
+    error(string.format("\n\nFORCE UNLOAD:\nduplicate\n"))
     thisScript():unload()
     wait(-1)
   end
@@ -169,11 +230,11 @@ function main()
   deathlist = deathListModule()
   ganghelper = ganghelperModule()
   bikerinfo = bikerInfoModule()
-  marker = markerModule()
 
   iznanka = iznankaModule()
   doublejump = doubleJumpModule()
   adr = adrModule()
+  marker = markerModule()
 
   drugsmats = drugsmatsModule()
   kunai = kunaiModule()
@@ -190,6 +251,7 @@ function main()
             },
             gc = {
               disable = false,
+              disable1 = true,
               show = false,
               m10 = false,
               m50 = false,
@@ -230,11 +292,11 @@ function main()
             deathlist = deathlist.defaults,
             ganghelper = ganghelper.defaults,
             bikerinfo = bikerinfo.defaults,
-            marker = marker.defaults,
 
             iznanka = iznanka.defaults,
             doublejump = doublejump.defaults,
             adr = adr.defaults,
+            marker = marker.defaults,
 
             drugsmats = drugsmats.defaults,
             kunai = kunai.defaults,
@@ -245,7 +307,7 @@ function main()
 
   if sampGetCurrentServerAddress() ~= serverAddress then
     do_not_reload = true
-
+    error(string.format("\n\nFORCE UNLOAD:\nUnknown server %s. Current server: %s\n", sampGetCurrentServerAddress(), serverAddress))
     thisScript():unload()
     wait(-1)
   end
@@ -255,6 +317,7 @@ function main()
     sampAddChatMessage("[EDITH]: У вас нет библиотеки SAMP.Lua.", 0xff0000)
     do_not_reload = true
 
+    error(string.format("\n\nFORCE UNLOAD:\nSAMP.Lua library is not installed\n"))
     thisScript():unload()
   else
     sampev = events
@@ -279,17 +342,17 @@ function main()
     tweaks.radio()
   end
 
-  lua_thread.create(glonass.main)
+  table.insert(threads, lua_thread.create(glonass.main))
 
   if settings.bikerlist.enable then
     bikerlist.register()
   end
 
-  lua_thread.create(capturetimer.main)
-  lua_thread.create(heistbeep.main)
+  table.insert(threads, lua_thread.create(capturetimer.main))
+  table.insert(threads, lua_thread.create(heistbeep.main))
 
-  lua_thread.create(score.main)
-  lua_thread.create(camhack.main)
+  table.insert(threads, lua_thread.create(score.main))
+  table.insert(threads, lua_thread.create(camhack.main))
 
   if settings.acapture.enable then
     acapture.register()
@@ -299,78 +362,57 @@ function main()
     rcapture.register()
   end
 
-  lua_thread.create(getgun.main)
-  lua_thread.create(tier.main)
-  lua_thread.create(changeweapon.main)
-  lua_thread.create(hideweapon.main)
-  lua_thread.create(gzcheck.main)
-  lua_thread.create(storoj.main)
-  lua_thread.create(storoj.checkboost)
-  lua_thread.create(liker.main)
-  lua_thread.create(healme.main)
-  lua_thread.create(parashute.main)
-  lua_thread.create(vspiwka.main)
-  lua_thread.create(warnings.main)
-  lua_thread.create(deathlist.main)
-  lua_thread.create(ganghelper.main)
-  lua_thread.create(marker.main)
+  table.insert(threads, lua_thread.create(getgun.main))
+  table.insert(threads, lua_thread.create(tier.main))
+  table.insert(threads, lua_thread.create(changeweapon.main))
+  table.insert(threads, lua_thread.create(hideweapon.main))
+  table.insert(threads, lua_thread.create(gzcheck.main))
+  table.insert(threads, lua_thread.create(storoj.main))
+  table.insert(threads, lua_thread.create(storoj.checkboost))
+  table.insert(threads, lua_thread.create(liker.main))
+  table.insert(threads, lua_thread.create(healme.main))
+  table.insert(threads, lua_thread.create(parashute.main))
+  table.insert(threads, lua_thread.create(vspiwka.main))
+  table.insert(threads, lua_thread.create(warnings.main))
+  table.insert(threads, lua_thread.create(deathlist.main))
+  table.insert(threads, lua_thread.create(ganghelper.main))
 
-  lua_thread.create(iznanka.main)
-  lua_thread.create(doublejump.main)
-  lua_thread.create(adr.main)
+  table.insert(threads, lua_thread.create(iznanka.main))
+  table.insert(threads, lua_thread.create(doublejump.main))
+  table.insert(threads, lua_thread.create(adr.main))
+  table.insert(threads, lua_thread.create(marker.main))
 
   drugsmats.ini()
-  lua_thread.create(drugsmats.main)
-  lua_thread.create(drugsmats.checkboost)
-  lua_thread.create(kunai.main)
-  lua_thread.create(discord.main)
+  table.insert(threads, lua_thread.create(drugsmats.main))
+  table.insert(threads, lua_thread.create(drugsmats.checkboost))
+  table.insert(threads, lua_thread.create(kunai.main))
+  table.insert(threads, lua_thread.create(discord.main))
 
   sampRegisterChatCommand(
           "edith",
           function()
-            lua_thread.create(
+            table.insert(tempThreads, lua_thread.create(
                     function()
                       updateMenu()
                       submenus_show(mod_submenus_sa, "{348cb2}EDITH v." .. thisScript().version, "Выбрать", "Закрыть", "Назад")
                     end
-            )
+            ))
           end
   )
   -- стрессер для gc
   if false then
     local old = math.ceil(collectgarbage("count"))
-    lua_thread.create(function()
+    table.insert(threads, lua_thread.create(function()
       while true do
-        wait(0)
+        wait(500)
         print("collect")
         collectgarbage("collect")
         local new = math.ceil(collectgarbage("count"))
         print(string.format("EDITH memory usage %.1f MiB", new / 1024), "+" .. tostring(new - old) .. "kb")
         old = new
       end
-    end)
+    end))
   end
-
-  if true and settings.gc.disable or settings.gc.m10 or settings.gc.m50 or settings.gc.m100 or settings.gc.m250 or settings.gc.m500 then
-    collectgarbage("stop")
-  end
-  local clear = 2000
-  if settings.gc.m10 then
-    clear = 10
-  end
-  if settings.gc.m50 then
-    clear = 50
-  end
-  if settings.gc.m100 then
-    clear = 100
-  end
-  if settings.gc.m250 then
-    clear = 250
-  end
-  if settings.gc.m500 then
-    clear = 500
-  end
-  clear = clear * 1024
 
   local old = math.ceil(collectgarbage("count"))
   local new = math.ceil(collectgarbage("count"))
@@ -387,121 +429,130 @@ function main()
   local handler = 0
 
   local panic = 0
-  while true do
-    wait(transponder_delay)
 
-    if settings.gc.show and os.clock() - garbage_timer > 1 then
-      new = math.ceil(collectgarbage("count"))
-      if new - old >= 0 then
-        print(string.format("EDITH memory usage %.1f MiB", new / 1024), "+" .. tostring(new - old) .. "kb")
-      else
-        print(string.format("EDITH memory usage %.1f MiB", new / 1024), tostring(new - old) .. "kb")
+  table.insert(threads, lua_thread.create(function()
+    while true do
+      wait(transponder_delay)
+
+      if settings.gc.show and os.clock() - garbage_timer > 1 then
+        new = math.ceil(collectgarbage("count"))
+        if new - old >= 0 then
+          print(string.format("EDITH memory usage %.1f MiB", new / 1024), "+" .. tostring(new - old) .. "kb")
+        else
+          print(string.format("EDITH memory usage %.1f MiB", new / 1024), tostring(new - old) .. "kb")
+        end
+        old = new
+        garbage_timer = os.clock()
       end
-      old = new
-      garbage_timer = os.clock()
-    end
 
-    if collectgarbage("count") > clear then
-      wait(1000)
-      collectgarbage("collect")
-      wait(1000)
-      collectgarbage("stop")
-      wait(1000)
-    end
+      wait_for_res = true
+      down_res = false
 
-    wait_for_res = true
-    down_res = false
+      request_table = {}
 
-    request_table = {}
+      glonass.prepare(request_table)
 
-    glonass.prepare(request_table)
+      acapture.prepare(request_table)
 
-    acapture.prepare(request_table)
+      deathlist.prepare(request_table)
 
-    deathlist.prepare(request_table)
+      capturetimer.prepare(request_table)
 
-    capturetimer.prepare(request_table)
+      bikerinfo.prepare(request_table)
 
-    bikerinfo.prepare(request_table)
+      marker.prepare(request_table)
 
-    marker.prepare(request_table)
+      res_path = os.tmpname()
 
-    res_path = os.tmpname()
-
-    request_table_final = { data = request_table, random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
-    handler = downloadUrlToFile(
-            ip .. encodeJson(request_table_final),
-            res_path,
-            function(id, status, p1, p2)
-              if status == dlstatus.STATUS_ENDDOWNLOADDATA then
-                down_res = true
+      request_table_final = { data = request_table, random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
+      handler = downloadUrlToFile(
+              ip .. encodeJson(request_table_final),
+              res_path,
+              function(id, status, p1, p2)
+                if status == dlstatus.STATUS_ENDDOWNLOADDATA then
+                  down_res = true
+                end
+                if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+                  wait_for_res = false
+                end
               end
-              if status == dlstatus.STATUSEX_ENDDOWNLOAD then
-                wait_for_res = false
-              end
+      )
+      while wait_for_res do
+        wait(100)
+      end
+      if down_res and doesFileExist(res_path) then
+        f = io.open(res_path, "r")
+        if f then
+          text = f:read("*a")
+          info = decodeJson(text)
+          if info ~= nil then
+            glonass.process(info)
+
+            acapture.process(info)
+
+            deathlist.process(info)
+
+            capturetimer.process(info)
+
+            marker.process(info)
+
+            panic = 0
+          else
+            if settings.welcome.show then
+              sampAddChatMessage(
+                      "{348cb2}[EDITH]: {ff0000}Некорректный ответ сервера. Попробуйте перезапустить скрипт: CTRL + R.",
+                      0xff0000
+              )
             end
-    )
-    while wait_for_res do
-      wait(100)
-    end
-    if down_res and doesFileExist(res_path) then
-      f = io.open(res_path, "r")
-      if f then
-        text = f:read("*a")
-        info = decodeJson(text)
-        if info ~= nil then
-          glonass.process(info)
+            do_not_reload = true
 
-          acapture.process(info)
-
-          deathlist.process(info)
-
-          capturetimer.process(info)
-
-          marker.process(info)
-
-          panic = 0
+            print("unload")
+            error(string.format("\n\nFORCE UNLOAD:\nBad server response.\n%s\n", text))
+            thisScript():unload()
+          end
+          f:close()
+          f = nil
+          info = nil
+          os.remove(response_path)
         else
           if settings.welcome.show then
             sampAddChatMessage(
-                    "{348cb2}[EDITH]: {ff0000}Некорректный ответ сервера. Попробуйте перезапустить скрипт: CTRL + R.",
+                    "{348cb2}[EDITH]: {ff0000}Ошибка чтения файла с информацией. Попробуйте перезапустить скрипт: CTRL + R.",
                     0xff0000
             )
           end
           do_not_reload = true
+          error(string.format("\n\nFORCE UNLOAD:\nError reading file with server response.\n"))
 
-          print("unload")
           thisScript():unload()
         end
-        f:close()
-        f = nil
-        info = nil
-        os.remove(response_path)
       else
-        if settings.welcome.show then
-          sampAddChatMessage(
-                  "{348cb2}[EDITH]: {ff0000}Ошибка чтения файла с информацией. Попробуйте перезапустить скрипт: CTRL + R.",
-                  0xff0000
-          )
-        end
-        do_not_reload = true
+        panic = panic + 1
+        if panic > 3 then
+          if settings.welcome.show then
+            sampAddChatMessage(
+                    "{348cb2}[EDITH]: {ff0000}Что-то: ответ от сервера не сохранился в файл. Попробуйте перезапустить скрипт: CTRL + R.",
+                    0xff0000
+            )
+          end
+          do_not_reload = true
+          print("unload")
 
-        thisScript():unload()
-      end
-    else
-      panic = panic + 1
-      if panic > 3 then
-        if settings.welcome.show then
-          sampAddChatMessage(
-                  "{348cb2}[EDITH]: {ff0000}Что-то: ответ от сервера не сохранился в файл. Попробуйте перезапустить скрипт: CTRL + R.",
-                  0xff0000
-          )
+          error(string.format("\n\nFORCE UNLOAD:\nServer did not respond for %s times.\n", panic))
+          thisScript():unload()
         end
-        do_not_reload = true
-        print("unload")
-
-        thisScript():unload()
       end
+
+    end
+  end))
+
+  while true do
+    wait(-1)
+    for k, v in pairs(threads) do
+      print("threads", k, v:status())
+    end
+    for k, v in pairs(tempThreads) do
+      print("temp threads", k, v:status())
     end
   end
 end
@@ -578,6 +629,7 @@ function auth()
         end
         do_not_reload = true
 
+        error(string.format("\n\nFORCE UNLOAD:\nServer did not respond (auth).\n"))
         thisScript():unload()
         wait(-1)
       else
@@ -615,6 +667,7 @@ function auth()
           end
           do_not_reload = true
 
+          error(string.format("\n\nFORCE UNLOAD:\nUser %s not found in the whitelist.\n", licensenick))
           thisScript():unload()
           wait(-1)
 
@@ -640,6 +693,7 @@ function auth()
           do_not_reload = true
 
           thisScript():unload()
+          error(string.format("\n\nFORCE UNLOAD:\nBad password for user %s.\n", licensenick))
           wait(-1)
         end
         wait_for_response = false
@@ -659,6 +713,7 @@ function auth()
     end
     do_not_reload = true
 
+    error(string.format("\n\nFORCE UNLOAD:\nConnection error.\n"))
     thisScript():unload()
     wait(-1)
   end
@@ -701,11 +756,11 @@ function updateMenu()
     deathlist.desc(),
     ganghelper.desc(),
     bikerinfo.desc(),
-    marker.desc(),
     "\n{AAAAAA}Модули таранта",
     iznanka.desc(),
     doublejump.desc(),
     adr.desc(),
+    marker.desc(),
     "\n{AAAAAA}Модули из чужих скриптов",
     drugsmats.desc(),
     kunai.desc(),
@@ -778,9 +833,9 @@ function updateMenu()
           title = " "
         },
         {
-          title = "Отключить сборщик: " .. tostring(settings.gc.disable),
+          title = "Отключить сборщик: " .. tostring(settings.gc.disable1),
           onclick = function()
-            settings.gc.disable = not settings.gc.disable
+            settings.gc.disable1 = not settings.gc.disable1
             settings.gc.m10 = false
             settings.gc.m50 = false
             settings.gc.m100 = false
@@ -796,7 +851,7 @@ function updateMenu()
         {
           title = "Очищать при 10мб: " .. tostring(settings.gc.m10),
           onclick = function()
-            settings.gc.disable = false
+            settings.gc.disable1 = false
             settings.gc.m10 = not settings.gc.m10
             settings.gc.m50 = false
             settings.gc.m100 = false
@@ -809,7 +864,7 @@ function updateMenu()
         {
           title = "Очищать при 50мб: " .. tostring(settings.gc.m50),
           onclick = function()
-            settings.gc.disable = false
+            settings.gc.disable1 = false
             settings.gc.m10 = false
             settings.gc.m50 = not settings.gc.m50
             settings.gc.m100 = false
@@ -822,7 +877,7 @@ function updateMenu()
         {
           title = "Очищать при 100мб: " .. tostring(settings.gc.m100),
           onclick = function()
-            settings.gc.disable = false
+            settings.gc.disable1 = false
             settings.gc.m10 = false
             settings.gc.m50 = false
             settings.gc.m100 = not settings.gc.m100
@@ -836,7 +891,7 @@ function updateMenu()
         {
           title = "Очищать при 250мб: " .. tostring(settings.gc.m250),
           onclick = function()
-            settings.gc.disable = false
+            settings.gc.disable1 = false
             settings.gc.m10 = false
             settings.gc.m50 = false
             settings.gc.m100 = false
@@ -850,7 +905,7 @@ function updateMenu()
         {
           title = "Очищать при 500мб: " .. tostring(settings.gc.m500),
           onclick = function()
-            settings.gc.disable = false
+            settings.gc.disable1 = false
             settings.gc.m10 = false
             settings.gc.m50 = false
             settings.gc.m100 = false
@@ -900,7 +955,6 @@ function updateMenu()
     deathlist.getMenu(),
     ganghelper.getMenu(),
     bikerinfo.getMenu(),
-    marker.getMenu(),
     {
       title = " "
     },
@@ -910,6 +964,7 @@ function updateMenu()
     iznanka.getMenu(),
     doublejump.getMenu(),
     adr.getMenu(),
+    marker.getMenu(),
     {
       title = " "
     },
@@ -954,11 +1009,11 @@ function updateMenu()
         deathlist.enable()
         ganghelper.enable()
         bikerinfo.enable()
-        marker.enable()
 
         iznanka.enable()
         doublejump.enable()
         adr.enable()
+        marker.enable()
 
         drugsmats.enable()
         kunai.enable()
@@ -997,11 +1052,11 @@ function updateMenu()
         deathlist.disable()
         ganghelper.disable()
         bikerinfo.disable()
-        marker.disable()
 
         iznanka.disable()
         doublejump.disable()
         adr.disable()
+        marker.disable()
 
         drugsmats.disable()
         kunai.disable()
@@ -1510,6 +1565,7 @@ function glonassModule()
     local file = getGameDirectory() .. "\\moonloader\\resource\\edith\\" .. nam
     if not doesFileExist(file) then
       downloadUrlToFile(remoteResourceURL .. nam, file)
+      print(remoteResourceURL .. nam)
     end
   end
 
@@ -1523,8 +1579,7 @@ function glonassModule()
 
     dn("pla.png")
     dn("matavoz.png")
-    dn("radar_centre.png")
-    dn("Icon_56.png")
+    dn("marker.png")
 
     for i = 1, 16 do
       dn(i .. ".png")
@@ -1643,19 +1698,19 @@ function glonassModule()
             {
               title = "Открыть большую карту - {7ef3fa}" .. key.id_to_name(settings.map.key1),
               onclick = function()
-                lua_thread.create(changemaphotkey, 1)
+                table.insert(tempThreads, lua_thread.create(changemaphotkey, 1))
               end
             },
             {
               title = "Открыть 1/4 карты - {7ef3fa}" .. key.id_to_name(settings.map.key2),
               onclick = function()
-                lua_thread.create(changemaphotkey, 2)
+                table.insert(tempThreads, lua_thread.create(changemaphotkey, 2))
               end
             },
             {
               title = "Сменить режим 1/4 карты- {7ef3fa}" .. key.id_to_name(settings.map.key3),
               onclick = function()
-                lua_thread.create(changemaphotkey, 3)
+                table.insert(tempThreads, lua_thread.create(changemaphotkey, 3))
               end
             }
           }
@@ -1894,7 +1949,7 @@ function glonassModule()
         {
           title = "Клавиша рендера - {7ef3fa}" .. key.id_to_name(settings.map.render_key),
           onclick = function()
-            lua_thread.create(changemaphotkey, 4)
+            table.insert(tempThreads, lua_thread.create(changemaphotkey, 4))
           end
         },
         {
@@ -2311,6 +2366,8 @@ function capturetimerModule()
     settings.capturetimer.enable = false
   end
 
+  --' Вам объявили войну Sons of Silence MC! Начало через 15 минут. Ваша задача удержать зону, отмеченную на карте'
+  --' Nick_Name объявил войну Vagos MC! Начало через 15 минут. Ваша задача удержать зону, отмеченную на карте'
   local onServerMessage = function(color, text)
     if string.find(text, "ачало через 15 минут") and string.find(text, "войн") then
       if not wasafk then
@@ -2326,36 +2383,37 @@ function capturetimerModule()
       end
     end
 
-    if string.find(text, "обедитель не определ") then
+    if text == " Победитель не определен! Война продлена на 2 минуты" then
       if not wasafk then
         waitforcapture = true
         sendtype = 2
       end
     end
 
-    if text:find(" Ваш клуб выиграл!") then
-      lua_thread.create(
+    if text == " Ваш клуб выиграл!" then
+      table.insert(tempThreads, lua_thread.create(
               function()
                 if settings.capturetimer.enable and settings.capturetimer.clistoff then
                   antiFlood()
                   sampSendChat("/clist 0")
                 end
               end
-      )
+      ))
       if not wasafk then
         waitforcapture = true
         sendtype = -1
       end
     end
-    if text:find(" Ваш клуб проиграл!") then
-      lua_thread.create(
+
+    if text == " Ваш клуб проиграл!" then
+      table.insert(tempThreads, lua_thread.create(
               function()
                 if settings.capturetimer.enable and settings.capturetimer.clistoff then
                   antiFlood()
                   sampSendChat("/clist 0")
                 end
               end
-      )
+      ))
       if not wasafk then
         waitforcapture = true
         sendtype = -2
@@ -2770,7 +2828,7 @@ function scoreModule()
       sampTextdrawSetLetterSizeAndColor(440, settings.score.size1, settings.score.size2, -1)
       sampTextdrawSetOutlineColor(440, 1, -16777216)
 
-      local x = lua_thread.create(monitor)
+      table.insert(tempThreads, lua_thread.create(monitor))
 
       while true do
         wait(700)
@@ -2894,7 +2952,7 @@ function scoreModule()
         {
           title = "Сбросить счётчик",
           onclick = function()
-            lua_thread.create(resetscore)
+            table.insert(tempThreads, lua_thread.create(resetscore))
           end
         },
         {
@@ -2903,7 +2961,7 @@ function scoreModule()
         {
           title = "Изменить позицию и размер",
           onclick = function()
-            lua_thread.create(changepos)
+            table.insert(tempThreads, lua_thread.create(changepos))
           end
         },
         {
@@ -2912,32 +2970,32 @@ function scoreModule()
             {
               title = "Показать весь урон - {7ef3fa}" .. key.id_to_name(settings.score.key1),
               onclick = function()
-                lua_thread.create(changehotkey, 1)
+                table.insert(tempThreads, lua_thread.create(changehotkey, 1))
               end
             },
             {
               title = "Показать убийства - {7ef3fa}" .. key.id_to_name(settings.score.key2),
               onclick = function()
-                lua_thread.create(changehotkey, 2)
+                table.insert(tempThreads, lua_thread.create(changehotkey, 2))
               end
             },
             {
               title = "Показать смерти - {7ef3fa}" .. key.id_to_name(settings.score.key3),
               onclick = function()
-                lua_thread.create(changehotkey, 3)
+                table.insert(tempThreads, lua_thread.create(changehotkey, 3))
               end
             },
             {
               title = "Показать K/D - {7ef3fa}" .. key.id_to_name(settings.score.key4),
               onclick = function()
-                lua_thread.create(changehotkey, 4)
+                table.insert(tempThreads, lua_thread.create(changehotkey, 4))
               end
             },
             {
               title = "Смена режима (белый - сеанс, красный - всё время) - {7ef3fa}" ..
                       key.id_to_name(settings.score.key5),
               onclick = function()
-                lua_thread.create(changehotkey, 5)
+                table.insert(tempThreads, lua_thread.create(changehotkey, 5))
               end
             }
           },
@@ -3178,7 +3236,7 @@ function bikerlistModule()
       if result then
         if button == 1 and list == 1 then
           bl_update()
-          lua_thread.create(checkAfk)
+          table.insert(tempThreads, lua_thread.create(checkAfk))
         elseif button == 1 and list == 0 then
           wait(100)
           bl_update()
@@ -3191,14 +3249,14 @@ function bikerlistModule()
     sampRegisterChatCommand(
             "bl",
             function()
-              lua_thread.create(checkTab)
+              table.insert(tempThreads, lua_thread.create(checkTab))
             end
     )
 
     sampRegisterChatCommand(
             "bll",
             function()
-              lua_thread.create(checkTab)
+              table.insert(tempThreads, lua_thread.create(checkTab))
             end
     )
   end
@@ -3232,7 +3290,7 @@ function bikerlistModule()
         {
           title = "Открыть байкерлист",
           onclick = function()
-            lua_thread.create(checkTab)
+            table.insert(tempThreads, lua_thread.create(checkTab))
           end
         }
       }
@@ -3412,7 +3470,7 @@ function cipherModule()
       if string.find(cmd, "/[f|r]e (.+)") then
         local message = string.match(cmd, "/[f|r]e (.+)")
         if string.len(message) > 35 then
-          lua_thread.create(
+          table.insert(tempThreads, lua_thread.create(
                   function()
                     local ind, max = 1, math.ceil(string.len(message) / 32)
                     for i = 1, max do
@@ -3425,7 +3483,7 @@ function cipherModule()
                       ind = ind + 33
                     end
                   end
-          )
+          ))
           return false
         end
         sampSendChat(string.format("/f ЕNС: %s", encode(message)))
@@ -3678,7 +3736,7 @@ function tierModule()
         {
           title = "Изменить горячую клавишу",
           onclick = function()
-            lua_thread.create(changetierhotkey)
+            table.insert(tempThreads, lua_thread.create(changetierhotkey))
           end
         }
       }
@@ -3777,7 +3835,7 @@ function struckModule()
     if color == -65281 and text:find("Введите: /struck") then
       if settings.struck.enable then
         stop_struck = true
-        lua_thread.create(
+        table.insert(tempThreads, lua_thread.create(
                 function()
                   math.randomseed(os.time() + os.clock())
                   wait(math.random(200, 400))
@@ -3790,11 +3848,11 @@ function struckModule()
                     sampSendChat("/struck")
                   end
                 end
-        )
+        ))
       end
     end
 
-    if color == 1790050303 and text:find("начал задание по доставке груза") then
+    if color == 1790050303 and text:find("начал задание по доставке груза") or text == " Задание уже начато" then
       stop_struck = false
     end
   end
@@ -4240,7 +4298,7 @@ function camhackModule()
         {
           title = "Изменить горячую клавишу",
           onclick = function()
-            lua_thread.create(changecamhackhotkey)
+            table.insert(tempThreads, lua_thread.create(changecamhackhotkey))
           end
         }
       }
@@ -4351,7 +4409,7 @@ function acaptureModule()
     sampRegisterChatCommand(
             "acapture",
             function()
-              lua_thread.create(command)
+              table.insert(tempThreads, lua_thread.create(command))
             end
     )
   end
@@ -4606,7 +4664,7 @@ function rcaptureModule()
     sampRegisterChatCommand(
             "rcapture",
             function()
-              lua_thread.create(rcapture.main)
+              table.insert(tempThreads, lua_thread.create(rcapture.main))
             end
     )
   end
@@ -4618,7 +4676,7 @@ function rcaptureModule()
           sampSendDialogResponse(dialog, 1, 0, settings.rcapture.password)
           auf_count = auf_count + 1
         end
-        lua_thread.create(function()
+        table.insert(tempThreads, lua_thread.create(function()
           local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
           while sampGetPlayerScore(id) == 0 do
             wait(0)
@@ -4634,7 +4692,7 @@ function rcaptureModule()
             inicfg.save(settings, "edith")
             addOneOffSound(0.0, 0.0, 0.0, 1052)
           end
-        end)
+        end))
       end
       if dialog == 212 then
         sampSendDialogResponse(212, 1, settings.rcapture.biz, -1)
@@ -4932,7 +4990,7 @@ function getgunModule()
         {
           title = "Изменить горячую клавишу",
           onclick = function()
-            lua_thread.create(changegetgunhotkey)
+            table.insert(tempThreads, lua_thread.create(changegetgunhotkey))
           end
         }
       }
@@ -6212,10 +6270,10 @@ function drugsmatsModule()
             rubin_drugs_mats_ShowDialog(1)
           end
           if str:find('Сменить позицию') then
-            lua_thread.create(function()
+            table.insert(tempThreads, lua_thread.create(function()
               wait(200)
               pos = true
-            end)
+            end))
           end
           if str:find('Проверка инвентаря') then
             ini[inikeys].inventory = not ini[inikeys].inventory
@@ -6267,7 +6325,7 @@ function drugsmatsModule()
             rubin_drugs_mats_ShowDialog(3)
           end
           if str:find('Кнопка для использвания нарко') then
-            lua_thread.create(function()
+            table.insert(tempThreads, lua_thread.create(function()
               wait(150)
               local keys = ""
               repeat
@@ -6284,7 +6342,7 @@ function drugsmatsModule()
               ini.global.key = keys
               inicfg.save(ini, "edith-drugs-mats")
               rubin_drugs_mats_ShowDialog(1)
-            end)
+            end))
           end
         end
       end
@@ -6372,7 +6430,7 @@ function drugsmatsModule()
 
     inicfg.save(ini, "edith-drugs-mats")
     wait(200)
-    lua_thread.create(rubin_drugs_mats_GetMats)
+    table.insert(tempThreads, lua_thread.create(rubin_drugs_mats_GetMats))
     wait(200)
     font_drugs = renderCreateFont(ini.render.font, ini.render.size, ini.render.flag)
     rubin_drugs_mats_text_to_table()
@@ -6418,9 +6476,9 @@ function drugsmatsModule()
             if gramm > ini[inikeys].max_use_gram then
               gramm = ini[inikeys].max_use_gram
             end
-            if second_timer <= ini[inikeys].seconds * bonus_drugs and second_timer > 0 then
-              gramm = 1
-            end
+            --if second_timer <= ini[inikeys].seconds * bonus_drugs and second_timer > 0 then
+            --  gramm = 1
+            --end
             sampSendChat(string.format('/%s %d', ini[inikeys].server_cmd, gramm))
           end
 
@@ -6566,17 +6624,17 @@ function drugsmatsModule()
           end
         end
         --if string.find(message, "оружие из материалов") then
-        --  lua_thread.create(rubin_drugs_mats_GetMats)
+        --  table.insert(threads, lua_thread.create(rubin_drugs_mats_GetMats)
         --end
       end
       if message:find('выбросил') and (message:find('аркотики') or message:find('атериалы')) and string.find(message, my_name) then
-        lua_thread.create(rubin_drugs_mats_GetMats)
+        table.insert(tempThreads, lua_thread.create(rubin_drugs_mats_GetMats))
       end
       if message:find('Вы взяли несколько комплектов') then
-        lua_thread.create(rubin_drugs_mats_GetMats)
+        table.insert(tempThreads, lua_thread.create(rubin_drugs_mats_GetMats))
       end
       if message:find('Вы ограбили дом! Наворованный металл можно сдать около порта.') then
-        lua_thread.create(rubin_drugs_mats_GetMats)
+        table.insert(tempThreads, lua_thread.create(rubin_drugs_mats_GetMats))
       end
       if message:find('У вас (%d+)/500 материалов с собой') then
         ini[inikeys].mats = message:match('У вас (%d+)/500 материалов с собой')
@@ -6596,14 +6654,17 @@ function drugsmatsModule()
         inicfg.save(ini, "edith-drugs-mats")
       end
       if message:find('Не флуди!') and check_inventory == 2 then
-        lua_thread.create(rubin_drugs_mats_GetMats)
+        table.insert(tempThreads, lua_thread.create(rubin_drugs_mats_GetMats))
       end
       if message:find('Вы купили %d+ грамм наркотиков за %d+ вирт %(У вас есть (%d+) грамм%)') then
         ini[inikeys].drugs = message:match('Вы купили %d+ грамм наркотиков за %d+ вирт %(У вас есть (%d+) грамм%)')
         inicfg.save(ini, "edith-drugs-mats")
       end
-      if message:find('Вы купили (%d+) грамм наркотиков за %d+ вирт у .+') then
-        local s1 = message:match('Вы купили (%d+) грамм наркотиков за %d+ вирт у .+')
+      if message:find(' %d+ грамм наркотических лекарств') then
+        table.insert(tempThreads, lua_thread.create(rubin_drugs_mats_GetMats))
+      end
+      if message:find(' Вы купили (%d+) грамм за %d+ вирт, у .+') then
+        local s1 = message:match(' Вы купили (%d+) грамм за %d+ вирт, у .+')
         ini[inikeys].drugs = tonumber(s1) + ini[inikeys].drugs
         inicfg.save(ini, "edith-drugs-mats")
       end
@@ -6628,9 +6689,10 @@ function drugsmatsModule()
             gramm = ini[inikeys].max_use_gram
           end
           second_timer = os.difftime(os.time(), drugs_timer)
-          if second_timer <= ini[inikeys].seconds * bonus_drugs and second_timer > 0 then
-            gramm = 1
-          end
+          --if second_timer <= ini[inikeys].seconds * bonus_drugs and second_timer > 0 then
+          --  gramm = 1
+          --end
+
           return { string.format('/%s %d', ini[inikeys].server_cmd, gramm) }
         end
         if command == ini.global.cmd:lower() then
@@ -6725,7 +6787,7 @@ function iznankaModule()
           if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and not isCharInAnyCar(playerPed) then
             iznanka_active = not iznanka_active
             if iznanka_active then
-              lua_thread.create(
+              table.insert(tempThreads, lua_thread.create(
                       function()
                         local result1, id1 = sampGetPlayerIdByCharHandle(playerPed)
                         if result1 then
@@ -6744,12 +6806,12 @@ function iznankaModule()
                             if settings.rcapture.active then
                               wait(200)
                             end
-                            lua_thread.create(
+                            table.insert(tempThreads, lua_thread.create(
                                     function()
                                       antiFlood()
                                       sampSendChat("/usedrugs")
                                     end
-                            )
+                            ))
                           end
 
                           setVirtualKeyDown(settings.iznanka.keyS, true)
@@ -6766,7 +6828,7 @@ function iznankaModule()
                           end
                         end
                       end
-              )
+              ))
             else
               setVirtualKeyDown(65, false)
               setVirtualKeyDown(68, false)
@@ -6859,13 +6921,13 @@ function iznankaModule()
         {
           title = "Изменить клавишу, сейчас: " .. tostring(tostring(key.id_to_name(settings.iznanka.key))),
           onclick = function()
-            lua_thread.create(changeiznankakey, 0)
+            table.insert(tempThreads, lua_thread.create(changeiznankakey, 0))
           end
         },
         {
           title = "Изменить клавишу бега, сейчас: " .. tostring(tostring(key.id_to_name(settings.iznanka.keyS))),
           onclick = function()
-            lua_thread.create(changeiznankakey, 1)
+            table.insert(tempThreads, lua_thread.create(changeiznankakey, 1))
           end
         },
       }
@@ -7125,13 +7187,13 @@ function doubleJumpModule()
         {
           title = "Изменить клавишу, сейчас: " .. tostring(tostring(key.id_to_name(settings.doublejump.key))),
           onclick = function()
-            lua_thread.create(changedoublejumpkey, 1)
+            table.insert(tempThreads, lua_thread.create(changedoublejumpkey, 1))
           end
         },
         {
           title = "Изменить клавишу прыжка, сейчас: " .. tostring(tostring(key.id_to_name(settings.doublejump.keyJ))),
           onclick = function()
-            lua_thread.create(changedoublejumpkey, 0)
+            table.insert(tempThreads, lua_thread.create(changedoublejumpkey, 0))
           end
         }
       }
@@ -7293,7 +7355,7 @@ function parashuteModule()
         {
           title = "Изменить клавишу, сейчас: " .. tostring(tostring(key.id_to_name(settings.parashute.key))),
           onclick = function()
-            lua_thread.create(changeparashutekey)
+            table.insert(tempThreads, lua_thread.create(changeparashutekey))
           end
         },
       }
@@ -7425,7 +7487,7 @@ function vspiwkaModule()
         {
           title = "Изменить клавишу, сейчас: " .. tostring(tostring(key.id_to_name(settings.vspiwka.key))),
           onclick = function()
-            lua_thread.create(changevspiwkakey)
+            table.insert(tempThreads, lua_thread.create(changevspiwkakey))
           end
         },
       }
@@ -7795,7 +7857,7 @@ function kunaiModule()
         {
           title = "Изменить клавишу, сейчас: " .. tostring(tostring(key.id_to_name(settings.kunai.key))),
           onclick = function()
-            lua_thread.create(changekunaikey)
+            table.insert(tempThreads, lua_thread.create(changekunaikey))
           end
         },
         {
@@ -8706,7 +8768,7 @@ function deathListModule()
     while true do
       wait(0)
       if isCharDead(playerPed) then
-        wait(100)
+        wait(250)
         res, killedId = sampGetPlayerIdByCharHandle(PLAYER_PED)
         if res and tpmp == false then
           killedNick = sampGetPlayerNickname(killedId)
@@ -8723,6 +8785,8 @@ function deathListModule()
             skin = -1,
             lvl = -1
           })
+
+          lastKilledBy = ""
         end
         while isCharDead(playerPed) do
           wait(1000)
@@ -9261,6 +9325,239 @@ function adrModule()
 end
 
 --------------------------------------------------------------------------------
+-------------------------------------MARKER-------------------------------------
+--------------------------------------------------------------------------------
+function markerModule()
+  local target = nil
+  local remove_target = false
+  local mark
+  local pick
+  local check
+  local result
+  local cur_x = 0
+
+  local get_crosshair_position = function()
+    local vec_out = ffi.new("float[3]")
+    local tmp_vec = ffi.new("float[3]")
+    ffi.cast(
+            "void (__thiscall*)(void*, float, float, float, float, float*, float*)",
+            0x514970
+    )(
+            ffi.cast("void*", 0xB6F028),
+            15.0,
+            tmp_vec[0], tmp_vec[1], tmp_vec[2],
+            tmp_vec,
+            vec_out
+    )
+    return vec_out[0], vec_out[1], vec_out[2]
+  end
+
+  local clrMarker = function()
+    cur_x = 0
+    removeBlip(mark)
+    removePickup(pick)
+    deleteCheckpoint(check)
+  end
+
+  local setMarker = function(x, y, z)
+    clrMarker()
+    cur_x = x
+    result, pick = createPickup(19605, 19, x, y, z)
+    check = createCheckpoint(2, x, y, z, x, y, z, 1.5)
+    mark = addSpriteBlipForCoord(x, y, z, 56)
+    if settings.marker.sound then
+      addOneOffSound(0.0, 0.0, 0.0, 1052)
+    end
+  end
+
+  local setTarget = function(x, y, z)
+    target = {
+      x = x,
+      y = y,
+      z = z
+    }
+    clrMarker()
+    setMarker(x, y, z)
+  end
+
+  local mainThread = function()
+    while true do
+      wait(0)
+      if settings.marker.enable then
+        if isKeyDown(2) and isKeyJustPressed(settings.marker.keyDel) then
+          remove_target = true
+          clrMarker()
+        end
+        if isKeyDown(2) and isKeyJustPressed(settings.marker.key1) then
+          local sx, sy = convert3DCoordsToScreen(get_crosshair_position())
+          local posX, posY, posZ = convertScreenCoordsToWorld3D(sx, sy, 700.0)
+          local camX, camY, camZ = getActiveCameraCoordinates()
+          local result, colpoint = processLineOfSight(camX, camY, camZ, posX, posY, posZ, true, true, false, true, false, false, false)
+          if result and colpoint.entity ~= 0 then
+            local normal = colpoint.normal
+            local pos = Vector3D(colpoint.pos[1], colpoint.pos[2], colpoint.pos[3]) - (Vector3D(normal[1], normal[2], normal[3]) * 0.1)
+
+            setTarget(pos.x, pos.y, pos.z)
+          end
+        end
+      end
+    end
+  end
+
+  local changemarkerhotkey = function(mode)
+    sampShowDialog(
+            989,
+            "Изменение горячей клавиши активации marker или деактивации",
+            'Нажмите "Окей", после чего нажмите нужную клавишу.\nНастройки будут изменены.',
+            "Окей",
+            "Закрыть"
+    )
+    while sampIsDialogActive(989) do
+      wait(100)
+    end
+    local resultMain, buttonMain, typ = sampHasDialogRespond(989)
+    if buttonMain == 1 then
+      while ke1y == nil do
+        wait(0)
+        for i = 1, 200 do
+          if isKeyDown(i) then
+            if mode == 1 then
+              settings.marker.key1 = i
+            elseif mode == 2 then
+              settings.marker.keyDel = i
+            end
+            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(i), -1)
+            addOneOffSound(0.0, 0.0, 0.0, 1052)
+            inicfg.save(settings, "edith")
+            ke1y = 1
+            break
+          end
+        end
+      end
+      ke1y = nil
+    end
+  end
+
+  local getMenu = function()
+    return {
+      title = "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER {808080}[ALFA]",
+      submenu = {
+        {
+          title = "Информация о модуле",
+          onclick = function()
+            sampShowDialog(
+                    0,
+                    "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"MARKER"',
+                    "{00ff66}MARKER{ffffff}\nОтправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}.\nПрицел + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.keyDel)) .. "{ffffff} - убрать метку.\nМетка только одна на сервер, пропадает через 30 секунд.\nМожно настроить звук когда она обновляется.",
+                    "Окей"
+            )
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Включить: " .. tostring(settings.marker.enable),
+          onclick = function()
+            settings.marker.enable = not settings.marker.enable
+            if settings.marker.enable == false then
+              clrMarker()
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Звук: " .. tostring(settings.marker.sound),
+          onclick = function()
+            settings.marker.sound = not settings.marker.sound
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "Изменить горячую клавишу активации",
+          onclick = function()
+            table.insert(tempThreads, lua_thread.create(changemarkerhotkey, 1))
+          end
+        },
+        {
+          title = "Изменить горячую клавишу деактивации",
+          onclick = function()
+            table.insert(tempThreads, lua_thread.create(changemarkerhotkey, 2))
+          end
+        },
+      }
+    }
+  end
+
+  local description = function()
+    return "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER - {ffffff}Отправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}. Прицел + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.keyDel)) .. " - убрать."
+  end
+
+  local enableAll = function()
+    settings.marker.enable = true
+  end
+
+  local disableAll = function()
+    settings.marker.enable = false
+  end
+
+  local defaults = {
+    enable = true,
+    key1 = VK_3,
+    keyDel = VK_4,
+    sound = true
+  }
+
+  local prepare = function(request_table)
+    if settings.marker.enable then
+      if target ~= nil then
+        request_table["marker"] = target
+
+        target = nil
+      elseif remove_target then
+        request_table["marker_remove"] = true
+
+        remove_target = false
+      end
+    end
+  end
+
+  local process = function(ad)
+    if settings.marker.enable then
+      if ad["marker"] then
+        if math.ceil(cur_x) ~= math.ceil(ad.marker.data.x) and target == nil then
+          setMarker(ad.marker.data.x, ad.marker.data.y, ad.marker.data.z)
+        end
+      else
+        clrMarker()
+      end
+    end
+  end
+
+  local onScriptTerminate = function()
+    if settings and settings.marker and settings.marker.enable then
+      clrMarker()
+    end
+  end
+
+  return {
+    main = mainThread,
+    getMenu = getMenu,
+    desc = description,
+    enable = enableAll,
+    disable = disableAll,
+    defaults = defaults,
+
+    prepare = prepare,
+    process = process,
+
+    onScriptTerminate = onScriptTerminate
+  }
+end
+--------------------------------------------------------------------------------
 ----------------------------------GANGHELPER------------------------------------
 --------------------------------------------------------------------------------
 function ganghelperModule()
@@ -9429,10 +9726,10 @@ function ganghelperModule()
             for k, v in pairs(coord_resp) do
               dist = math.floor(getDistanceBetweenCoords3d(v[1], v[2], v[3], getCharCoordinates(playerPed)))
               if dist <= 100.0 then
-                lua_thread.create(function()
+                table.insert(tempThreads, lua_thread.create(function()
                   antiFlood()
                   sampSendChat('/get guns')
-                end)
+                end))
                 break
               end
             end
@@ -9692,239 +9989,6 @@ function bikerInfoModule()
 
     onServerMessage = onServerMessage,
     onShowDialog = onShowDialog
-  }
-end
---------------------------------------------------------------------------------
--------------------------------------MARKER-------------------------------------
---------------------------------------------------------------------------------
-function markerModule()
-  local target = nil
-  local remove_target = false
-  local mark
-  local pick
-  local check
-  local result
-  local cur_x = 0
-
-  local get_crosshair_position = function()
-    local vec_out = ffi.new("float[3]")
-    local tmp_vec = ffi.new("float[3]")
-    ffi.cast(
-            "void (__thiscall*)(void*, float, float, float, float, float*, float*)",
-            0x514970
-    )(
-            ffi.cast("void*", 0xB6F028),
-            15.0,
-            tmp_vec[0], tmp_vec[1], tmp_vec[2],
-            tmp_vec,
-            vec_out
-    )
-    return vec_out[0], vec_out[1], vec_out[2]
-  end
-
-  local clrMarker = function()
-    cur_x = 0
-    removeBlip(mark)
-    removePickup(pick)
-    deleteCheckpoint(check)
-  end
-
-  local setMarker = function(x, y, z)
-    clrMarker()
-    cur_x = x
-    result, pick = createPickup(19605, 19, x, y, z)
-    check = createCheckpoint(2, x, y, z, x, y, z, 1.5)
-    mark = addSpriteBlipForCoord(x, y, z, 56)
-    if settings.marker.sound then
-      addOneOffSound(0.0, 0.0, 0.0, 1052)
-    end
-  end
-
-  local setTarget = function(x, y, z)
-    target = {
-      x = x,
-      y = y,
-      z = z
-    }
-    clrMarker()
-    setMarker(x, y, z)
-  end
-
-  local mainThread = function()
-    while true do
-      wait(0)
-      if settings.marker.enable then
-        if isKeyDown(2) and isKeyJustPressed(settings.marker.keyDel) then
-          remove_target = true
-          clrMarker()
-        end
-        if isKeyDown(2) and isKeyJustPressed(settings.marker.key1) then
-          local sx, sy = convert3DCoordsToScreen(get_crosshair_position())
-          local posX, posY, posZ = convertScreenCoordsToWorld3D(sx, sy, 700.0)
-          local camX, camY, camZ = getActiveCameraCoordinates()
-          local result, colpoint = processLineOfSight(camX, camY, camZ, posX, posY, posZ, true, true, false, true, false, false, false)
-          if result and colpoint.entity ~= 0 then
-            local normal = colpoint.normal
-            local pos = Vector3D(colpoint.pos[1], colpoint.pos[2], colpoint.pos[3]) - (Vector3D(normal[1], normal[2], normal[3]) * 0.1)
-
-            setTarget(pos.x, pos.y, pos.z)
-          end
-        end
-      end
-    end
-  end
-
-  local changemarkerhotkey = function(mode)
-    sampShowDialog(
-            989,
-            "Изменение горячей клавиши активации marker или деактивации",
-            'Нажмите "Окей", после чего нажмите нужную клавишу.\nНастройки будут изменены.',
-            "Окей",
-            "Закрыть"
-    )
-    while sampIsDialogActive(989) do
-      wait(100)
-    end
-    local resultMain, buttonMain, typ = sampHasDialogRespond(989)
-    if buttonMain == 1 then
-      while ke1y == nil do
-        wait(0)
-        for i = 1, 200 do
-          if isKeyDown(i) then
-            if mode == 1 then
-              settings.marker.key1 = i
-            elseif mode == 2 then
-              settings.marker.keyDel = i
-            end
-            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(i), -1)
-            addOneOffSound(0.0, 0.0, 0.0, 1052)
-            inicfg.save(settings, "edith")
-            ke1y = 1
-            break
-          end
-        end
-      end
-      ke1y = nil
-    end
-  end
-
-  local getMenu = function()
-    return {
-      title = "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER {808080}[ALFA]",
-      submenu = {
-        {
-          title = "Информация о модуле",
-          onclick = function()
-            sampShowDialog(
-                    0,
-                    "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"MARKER"',
-                    "{00ff66}MARKER{ffffff}\nОтправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}.\nПрицел + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.keyDel)) .. "{ffffff} - убрать метку.\nМетка только одна на сервер, пропадает через 30 секунд.\nМожно настроить звук когда она обновляется.",
-                    "Окей"
-            )
-          end
-        },
-        {
-          title = " "
-        },
-        {
-          title = "Включить: " .. tostring(settings.marker.enable),
-          onclick = function()
-            settings.marker.enable = not settings.marker.enable
-            if settings.marker.enable == false then
-              clrMarker()
-            end
-            inicfg.save(settings, "edith")
-          end
-        },
-        {
-          title = " "
-        },
-        {
-          title = "Звук: " .. tostring(settings.marker.sound),
-          onclick = function()
-            settings.marker.sound = not settings.marker.sound
-            inicfg.save(settings, "edith")
-          end
-        },
-        {
-          title = "Изменить горячую клавишу активации",
-          onclick = function()
-            lua_thread.create(changemarkerhotkey, 1)
-          end
-        },
-        {
-          title = "Изменить горячую клавишу деактивации",
-          onclick = function()
-            lua_thread.create(changemarkerhotkey, 2)
-          end
-        },
-      }
-    }
-  end
-
-  local description = function()
-    return "{7ef3fa}* " .. (settings.marker.enable and "{00ff66}" or "{ff0000}") .. "MARKER - {ffffff}Отправляет клиентам сервера информацию о метке по прицелу + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.key1)) .. "{ffffff}. Прицел + {7ef3fa}" .. tostring(key.id_to_name(settings.marker.keyDel)) .. " - убрать."
-  end
-
-  local enableAll = function()
-    settings.marker.enable = true
-  end
-
-  local disableAll = function()
-    settings.marker.enable = false
-  end
-
-  local defaults = {
-    enable = true,
-    key1 = VK_3,
-    keyDel = VK_4,
-    sound = true
-  }
-
-  local prepare = function(request_table)
-    if settings.marker.enable then
-      if target ~= nil then
-        request_table["marker"] = target
-
-        target = nil
-      elseif remove_target then
-        request_table["marker_remove"] = true
-
-        remove_target = false
-      end
-    end
-  end
-
-  local process = function(ad)
-    if settings.marker.enable then
-      if ad["marker"] then
-        if math.ceil(cur_x) ~= math.ceil(ad.marker.data.x) and target == nil then
-          setMarker(ad.marker.data.x, ad.marker.data.y, ad.marker.data.z)
-        end
-      else
-        clrMarker()
-      end
-    end
-  end
-
-  local onScriptTerminate = function()
-    if settings and settings.marker and settings.marker.enable then
-      clrMarker()
-    end
-  end
-
-  return {
-    main = mainThread,
-    getMenu = getMenu,
-    desc = description,
-    enable = enableAll,
-    disable = disableAll,
-    defaults = defaults,
-
-    prepare = prepare,
-    process = process,
-
-    onScriptTerminate = onScriptTerminate
   }
 end
 --------------------------------------------------------------------------------
@@ -10385,7 +10449,7 @@ end
 function update(php, prefix, url, komanda)
   komandaA = komanda
   local dlstatus = require("moonloader").download_status
-  local json = getWorkingDirectory() .. "\\" .. thisScript().name .. "-version.json"
+  local json = os.tmpname()
   if doesFileExist(json) then
     os.remove(json)
   end
@@ -10434,7 +10498,7 @@ function update(php, prefix, url, komanda)
                   f:close()
                   os.remove(json)
                   if updateversion ~= thisScript().version then
-                    lua_thread.create(
+                    table.insert(tempThreads, lua_thread.create(
                             function(prefix, komanda)
                               local dlstatus = require("moonloader").download_status
                               local color = -1
@@ -10459,18 +10523,19 @@ function update(php, prefix, url, komanda)
                                             )
                                           end
                                           goupdatestatus = true
-                                          lua_thread.create(
+                                          table.insert(tempThreads, lua_thread.create(
                                                   function()
                                                     wait(500)
                                                     thisScript():reload()
                                                   end
-                                          )
+                                          ))
                                         end
                                         if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
                                           if goupdatestatus == nil then
                                             sampAddChatMessage((prefix .. "Обновление прошло неудачно. Смерть.."), color)
                                             do_not_reload = true
 
+                                            error(string.format("\n\nFORCE UNLOAD:\nUpdate did not succeed.\n"))
                                             thisScript():unload()
                                             update = false
                                             wait(-1)
@@ -10480,7 +10545,7 @@ function update(php, prefix, url, komanda)
                               )
                             end,
                             prefix
-                    )
+                    ))
                   else
                     update = false
                     print("v" .. thisScript().version .. ": Обновление не требуется.")
@@ -10493,6 +10558,8 @@ function update(php, prefix, url, komanda)
                                 ": Не могу проверить обновление. Сайт сдох, я сдох, ваш интернет работает криво. Одно из этого списка."
                 )
                 do_not_reload = true
+
+                error(string.format("\n\nFORCE UNLOAD:\nversion.json was not downloaded.\n"))
 
                 thisScript():unload()
                 update = false
@@ -10535,14 +10602,14 @@ function openchangelog(komanda, url)
   sampRegisterChatCommand(
           komanda,
           function()
-            lua_thread.create(
+            table.insert(tempThreads, lua_thread.create(
                     function()
                       if changelogurl == nil then
                         changelogurl = url
                       end
                       showlog()
                     end
-            )
+            ))
           end
   )
 end
