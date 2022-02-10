@@ -2,10 +2,10 @@ FROM alpine:3.15
 
 RUN apk add --update --no-cache curl
 
-RUN addgroup curl && adduser -S -G curl curl
+#RUN addgroup curl && adduser -S -G curl curl
 
 RUN mkdir /config
-RUN chown curl:curl /config
+#RUN chown curl:curl /config
 
 WORKDIR /config
 
@@ -13,7 +13,7 @@ WORKDIR /config
 RUN touch twinks.json
 RUN echo "{}" >> twinks.json
 
-ENV DELAY_IN_SECONDS=40
+ENV DELAY_IN_SECONDS=300
 ENV TWINKS_RAW_LINK=https://friendpaste.com/ID/raw
 
 ENTRYPOINT while true; do curl --fail $TWINKS_RAW_LINK -o twinks.json; sleep $DELAY_IN_SECONDS; done

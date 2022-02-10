@@ -69,6 +69,7 @@ services:
       driver: json-file
     volumes:
       - ./config:/config
+  # update twinks.json every 300 seconds
   update-twinks:
     build:
       context: .
