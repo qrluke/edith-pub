@@ -117,22 +117,49 @@ function onScriptTerminate(LuaScript, quitGame)
   end
 end
 --------------------------------------------------------------------------------
---------------------------------ERROR REPORTING---------------------------------
+--------------------------------------MAIN--------------------------------------
 --------------------------------------------------------------------------------
-if enableErrorReporter then
-  local need_to_inject = true
-  for id = 1, 1000 do
-    local s = script.get(id)
-    if s then
-      if s.name == "edith-auto-error-reporter" and s.dead == false then
-        need_to_inject = false
-        print("exists")
-        break
+local threads = {}
+local tempThreads = {}
+
+function main()
+  if not isSampfuncsLoaded() or not isSampLoaded() then
+    return
+  end
+  while not isSampAvailable() do
+    wait(100)
+  end
+
+  if force_unload then
+    wait(math.random(1, 2) * 1000)
+    --error(string.format("\n\nFORCE UNLOAD:\nduplicate\n"))
+    thisScript():unload()
+    wait(-1)
+  end
+
+  if enableAutoUpdate then
+    update(
+            autoUpdateLink,
+            "[" .. string.upper(thisScript().name) .. "]: ",
+            autoUpdateScriptUrl,
+            autoUpdateChangelogCommand
+    )
+  end
+
+  if enableErrorReporter then
+    local need_to_inject = true
+    for id = 1, 1000 do
+      local s = script.get(id)
+      if s then
+        if s.name == "edith-auto-error-reporter" and s.dead == false then
+          need_to_inject = false
+          print("exists")
+          break
+        end
       end
     end
-  end
-  if need_to_inject then
-    local reporter_script = [[
+    if need_to_inject then
+      local reporter_script = [[
 require 'lib.moonloader'
 script_name("edith-auto-error-reporter")
 
@@ -162,42 +189,14 @@ function onSystemMessage(msg, type, s)
   end
 end
   ]]
-    reporter_script = reporter_script:gsub("REPORT_TO_URL", ip .. "crash_report/")
-    local fn = os.tmpname()
-    injection = io.open(fn, "w+")
-    injection:write(reporter_script)
-    injection:close()
-    script.load(fn)
-    os.remove(fn)
-  end
-end
---------------------------------------------------------------------------------
---------------------------------------MAIN--------------------------------------
---------------------------------------------------------------------------------
-local threads = {}
-local tempThreads = {}
-
-function main()
-  if not isSampfuncsLoaded() or not isSampLoaded() then
-    return
-  end
-  while not isSampAvailable() do
-    wait(100)
-  end
-  if force_unload then
-    wait(math.random(1, 2) * 1000)
-    error(string.format("\n\nFORCE UNLOAD:\nduplicate\n"))
-    thisScript():unload()
-    wait(-1)
-  end
-
-  if enableAutoUpdate then
-    update(
-            autoUpdateLink,
-            "[" .. string.upper(thisScript().name) .. "]: ",
-            autoUpdateScriptUrl,
-            autoUpdateChangelogCommand
-    )
+      reporter_script = reporter_script:gsub("REPORT_TO_URL", ip .. "crash_report/")
+      local fn = os.tmpname()
+      injection = io.open(fn, "w+")
+      injection:write(reporter_script)
+      injection:close()
+      script.load(fn)
+      os.remove(fn)
+    end
   end
 
   tweaks = tweaksModule()
