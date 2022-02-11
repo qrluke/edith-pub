@@ -455,4 +455,4 @@ if __name__ == '__main__':
     app.static('version.json', 'version.json')
     app.static('edith.lua', 'edith.lua')
 
-    app.run(host='0.0.0.0', port=33333, auto_reload=False, debug=True)
+    app.run(host='0.0.0.0', port=33333, auto_reload=False, debug=False)
