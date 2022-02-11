@@ -71,7 +71,10 @@ def topinfo(twinks):
             sum[2] += v["score"]
             sum[3] += v["kills"]
             sum[4] += v["deaths"]
-            sum[5] = "{:.1f}".format(sum[3] / sum[4])
+            try:
+                sum[5] = "{:.1f}".format(sum[3] / sum[4])
+            except ZeroDivisionError:
+                sum[5] = "n/a"
             sum[6] += v["demorgan"]
 
             new_output = table2ascii(
