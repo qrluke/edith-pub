@@ -73,14 +73,14 @@ def clear_old():
                 del nicks[k]
 
 
-bikers = {}
+bikers = {"data": {}}
 
 
 def process_bikers(info):
     global bikers
 
     if "bikers" in info["data"]:
-        bikers = info["data"]["bikers"]
+        bikers["data"] = info["data"]["bikers"]
 
 
 def process_glonass(info, answer):

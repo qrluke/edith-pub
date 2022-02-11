@@ -98,11 +98,11 @@ def captureinfo(textdraw, bikers, capture, capture_next):
 
         def update(self):
             if getStatus() == "active" or getStatus() == "active_textdraw":
-                to_send = self.genCaptureYaml(bikers)
+                to_send = self.genCaptureYaml(bikers["data"])
                 if self.str != to_send:
                     self.str = to_send
                     api.edit_message(self.chn, self.msg, content=self.pred + "\n" + self.str)
-                self.pred_bikers = bikers.copy()
+                self.pred_bikers = bikers["data"].copy()
             else:
                 time.sleep(1)
                 api.edit_message(self.chn, self.msg, content=self.genCaptureYaml(self.pred_bikers))
