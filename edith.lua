@@ -78,7 +78,7 @@ function onScriptTerminate(LuaScript, quitGame)
     if marker and marker.onScriptTerminate then
       marker.onScriptTerminate()
     end
-    if not quitGame and settings then
+    if not quitGame then
       if first_instance_id == thisScript().id then
         if settings.test.reloadonterminate then
           if do_not_reload or isKeyDown(VK_R) then
@@ -110,9 +110,7 @@ function onScriptTerminate(LuaScript, quitGame)
         end
       else
         if isSampAvailable() and isSampfuncsLoaded() then
-          if settings.welcome.show then
-            sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Обнаружен лишний экземпляр скрипта. {7ef3fa}Выгружаюсь...", 0xff0000)
-          end
+          sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Обнаружен лишний экземпляр скрипта. {7ef3fa}Выгружаюсь...", 0xff0000)
         end
       end
     end
