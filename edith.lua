@@ -80,7 +80,7 @@ function onScriptTerminate(LuaScript, quitGame)
     end
     if not quitGame then
       if first_instance_id == thisScript().id then
-        if settings.test.reloadonterminate then
+        if settings and settings.test.reloadonterminate then
           if do_not_reload or isKeyDown(VK_R) then
             if isSampAvailable() and isSampfuncsLoaded() then
 
@@ -100,9 +100,7 @@ function onScriptTerminate(LuaScript, quitGame)
           end
         else
           if isSampAvailable() and isSampfuncsLoaded() then
-            if settings.welcome.show then
-              sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена, возможно с ошибкой. {7ef3fa}CTRL + R - перезапустить, если стоит скрипт reload all", 0xff0000)
-            end
+            sampAddChatMessage("{348cb2}[EDITH]: {ff0000}Работа скрипта завершена, возможно с ошибкой. {7ef3fa}CTRL + R - перезапустить, если стоит скрипт reload all", 0xff0000)
           end
         end
         local sec = tonumber(os.clock() + 0.1);
