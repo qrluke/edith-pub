@@ -2350,21 +2350,21 @@ function capturetimerModule()
   --' Nick_Name объявил войну Vagos MC! Начало через 15 минут. Ваша задача удержать зону, отмеченную на карте'
   local onServerMessage = function(color, text)
     if string.find(text, "ачало через 15 минут") and string.find(text, "войн") then
-      if not os.time() - checkafk > 5 then
+      if not (os.time() - checkafk > 5) then
         waitforcapture = true
         sendtype = 25
       end
     end
 
     if text == " Война началась! Победит тот, кто прогонит врага из зоны, или убьет больше человек" then
-      if not os.time() - checkafk > 5 then
+      if not (os.time() - checkafk > 5) then
         waitforcapture = true
         sendtype = 10
       end
     end
 
     if text == " Победитель не определен! Война продлена на 2 минуты" then
-      if not os.time() - checkafk > 5 then
+      if not (os.time() - checkafk > 5) then
         waitforcapture = true
         sendtype = 2
       end
@@ -2379,7 +2379,7 @@ function capturetimerModule()
                 end
               end
       ))
-      if not os.time() - checkafk > 5 then
+      if not (os.time() - checkafk > 5) then
         waitforcapture = true
         sendtype = -1
       end
@@ -2394,7 +2394,7 @@ function capturetimerModule()
                 end
               end
       ))
-      if not os.time() - checkafk > 5 then
+      if not (os.time() - checkafk > 5) then
         waitforcapture = true
         sendtype = -2
       end
@@ -2435,7 +2435,7 @@ function capturetimerModule()
   }
 
   local onShowTextDraw = function(id, tab)
-    if not os.time() - checkafk > 5 then
+    if not (os.time() - checkafk > 5) then
       if tab.text:find("~y~KILLS~n~") then
         senddraw = {}
         senddraw.type = "new"
@@ -2449,7 +2449,7 @@ function capturetimerModule()
   end
 
   local onTextDrawSetString = function(id, str)
-    if not os.time() - checkafk > 5 then
+    if not (os.time() - checkafk > 5) then
       if str:find("~y~KILLS~n~") then
         senddraw = {}
         senddraw.type = "upd"
@@ -9696,7 +9696,7 @@ function ganghelperModule()
       end
       if settings.ganghelper.getguns then
         if string.find(text, " (.*) открыл%(а%) склад с оружием") then
-          if not os.time() - checkafk > 5 and isBandit() then
+          if not (os.time() - checkafk > 5) and isBandit() then
             for k, v in pairs(coord_resp) do
               dist = math.floor(getDistanceBetweenCoords3d(v[1], v[2], v[3], getCharCoordinates(playerPed)))
               if dist <= 100.0 then
