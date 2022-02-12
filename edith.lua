@@ -10522,7 +10522,7 @@ function update(php, prefix, url, komanda)
 
                                             error(string.format("\n\nFORCE UNLOAD:\nUpdate did not succeed.\n"))
                                             thisScript():unload()
-                                            update = false
+                                            update1 = false
                                             wait(-1)
                                           end
                                         end
@@ -10532,7 +10532,7 @@ function update(php, prefix, url, komanda)
                             prefix
                     ))
                   else
-                    update = false
+                    update1 = false
                     print("v" .. thisScript().version .. ": Обновление не требуется.")
                   end
                 end
@@ -10547,16 +10547,17 @@ function update(php, prefix, url, komanda)
                 error(string.format("\n\nFORCE UNLOAD:\nversion.json was not downloaded.\n"))
 
                 thisScript():unload()
-                update = false
+                update1 = false
                 wait(-1)
                 return
               end
             end
           end
   )
-  while update ~= false do
+  while update1 ~= false do
     wait(100)
   end
+  update1 = nil
 end
 
 function add_to_changelog(title, text)
