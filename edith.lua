@@ -1442,7 +1442,7 @@ function glonassModule()
                 --убрать
                 if data["timestamp"] - v1["timestamp"] < 60 then
                   if mapmode == 0 then
-                    renderFontDrawText(font, v1["health"], getX(v1["x"]) + xmod+10, getY(v1["y"]) + 2, 0xFF00FF00)
+                    renderFontDrawText(font, v1["health"], getX(v1["x"]) + xmod + 10, getY(v1["y"]) + 2, 0xFF00FF00)
                   else
                     renderFontDrawText(font12, v1["health"], getX(v1["x"]) + 28, getY(v1["y"]) + 4, 0xFF00FF00)
                   end
