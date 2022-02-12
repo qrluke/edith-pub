@@ -2225,7 +2225,6 @@ function capturetimerModule()
   local waitforcapture = false
   local waitfordraw = false
   local checkafk = os.time()
-  local wasafk = false
   local sendtype = 0
   local senddraw = {}
   local timeleft_type = 0
@@ -2244,11 +2243,6 @@ function capturetimerModule()
     while true do
       wait(1000)
       if settings.capturetimer.enable then
-        if os.time() - checkafk > 2 then
-          wasafk = true
-        else
-          wasafk = false
-        end
         checkafk = os.time()
         if timeleft_type ~= 0 then
           if timeleft_type == 25 then
@@ -2353,21 +2347,21 @@ function capturetimerModule()
   --' Nick_Name объявил войну Vagos MC! Начало через 15 минут. Ваша задача удержать зону, отмеченную на карте'
   local onServerMessage = function(color, text)
     if string.find(text, "ачало через 15 минут") and string.find(text, "войн") then
-      if not wasafk then
+      if not os.time() - checkafk > 5 then
         waitforcapture = true
         sendtype = 25
       end
     end
 
     if text == " Война началась! Победит тот, кто прогонит врага из зоны, или убьет больше человек" then
-      if not wasafk then
+      if not os.time() - checkafk > 5 then
         waitforcapture = true
         sendtype = 10
       end
     end
 
     if text == " Победитель не определен! Война продлена на 2 минуты" then
-      if not wasafk then
+      if not os.time() - checkafk > 5 then
         waitforcapture = true
         sendtype = 2
       end
@@ -2382,7 +2376,7 @@ function capturetimerModule()
                 end
               end
       ))
-      if not wasafk then
+      if not os.time() - checkafk > 5 then
         waitforcapture = true
         sendtype = -1
       end
@@ -2397,7 +2391,7 @@ function capturetimerModule()
                 end
               end
       ))
-      if not wasafk then
+      if not os.time() - checkafk > 5 then
         waitforcapture = true
         sendtype = -2
       end
@@ -2438,7 +2432,7 @@ function capturetimerModule()
   }
 
   local onShowTextDraw = function(id, tab)
-    if not wasafk then
+    if not os.time() - checkafk > 5 then
       if tab.text:find("~y~KILLS~n~") then
         senddraw = {}
         senddraw.type = "new"
@@ -2452,7 +2446,7 @@ function capturetimerModule()
   end
 
   local onTextDrawSetString = function(id, str)
-    if not wasafk then
+    if not os.time() - checkafk > 5 then
       if str:find("~y~KILLS~n~") then
         senddraw = {}
         senddraw.type = "upd"
@@ -9560,7 +9554,6 @@ function ganghelperModule()
   local result = 0
   local dist = 99999
   local checkafk = os.time()
-  local wasafk = false
   local fcapture = false
 
   local antiFlood = function()
@@ -9593,11 +9586,6 @@ function ganghelperModule()
         if settings.ganghelper.fcapture and fcapture then
           antiFlood()
           sampSendChat("/capture")
-        end
-        if os.clock() - checkafk > 2 then
-          wasafk = true
-        else
-          wasafk = false
         end
         checkafk = os.clock()
         if settings.ganghelper.gunkeys then
@@ -9705,7 +9693,7 @@ function ganghelperModule()
       end
       if settings.ganghelper.getguns then
         if string.find(text, " (.*) открыл%(а%) склад с оружием") then
-          if not wasafk and isBandit() then
+          if not os.time() - checkafk > 5 and isBandit() then
             for k, v in pairs(coord_resp) do
               dist = math.floor(getDistanceBetweenCoords3d(v[1], v[2], v[3], getCharCoordinates(playerPed)))
               if dist <= 100.0 then
