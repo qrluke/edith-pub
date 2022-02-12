@@ -2229,6 +2229,9 @@ function capturetimerModule()
   local senddraw = {}
   local timeleft_type = 0
   local timeleft_base
+  local timeleft
+  local timeleft_minute
+  local timeleft_seconds
   local sleep = 0
 
   local antiFlood = function()
