@@ -7819,7 +7819,7 @@ function kunaiModule()
             sampShowDialog(
                     0,
                     "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"KUNAI"',
-                    "{00ff66}VSPIWKA{ffffff}\n/q с клоунской РП отыгровкой.\nАктивация: {00ccff}" .. tostring(key.id_to_name(settings.kunai.key)) .. "{ffffff}.",
+                    "{00ff66}KUNAI{ffffff}\n/q с клоунской РП отыгровкой.\nАктивация: {00ccff}" .. tostring(key.id_to_name(settings.kunai.key)) .. "{ffffff}.",
                     "Окей"
             )
           end
