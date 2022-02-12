@@ -1071,6 +1071,7 @@ function glonassModule()
   local target = { x = 0, y = 0, z = 0, time = 0 }
   local marker = 0
   local x, y = 0, 0
+  local xmod = 15
 
   local mapmode = 1
   local modX = 2
@@ -1280,6 +1281,10 @@ function glonassModule()
         renderDrawTexture(m14, bX + size / 4, bY + 3 * (size / 4), size / 4, size / 4, 0, settings.map.alpha)
         renderDrawTexture(m15, bX + 2 * (size / 4), bY + 3 * (size / 4), size / 4, size / 4, 0, settings.map.alpha)
         renderDrawTexture(m16, bX + 3 * (size / 4), bY + 3 * (size / 4), size / 4, size / 4, 0, settings.map.alpha)
+
+        if size == 1300 then
+          iconsize = 32
+        end
         if size == 1024 then
           iconsize = 16
         end
@@ -1290,6 +1295,9 @@ function glonassModule()
           iconsize = 10
         end
       else
+        if size == 1300 then
+          iconsize = 32
+        end
         if size == 1024 then
           iconsize = 32
         end
@@ -1434,14 +1442,14 @@ function glonassModule()
                 --убрать
                 if data["timestamp"] - v1["timestamp"] < 60 then
                   if mapmode == 0 then
-                    renderFontDrawText(font, v1["health"], getX(v1["x"]) + 12, getY(v1["y"]) + 2, 0xFF00FF00)
+                    renderFontDrawText(font, v1["health"], getX(v1["x"]) + xmod, getY(v1["y"]) + 2, 0xFF00FF00)
                   else
                     renderFontDrawText(font12, v1["health"], getX(v1["x"]) + 28, getY(v1["y"]) + 4, 0xFF00FF00)
                   end
                   n1, n2 = string.match(z, "(.).+_(.).+")
                   if n1 and n2 then
                     if mapmode == 0 then
-                      renderFontDrawText(font, n1 .. n2, getX(v1["x"]) - 12, getY(v1["y"]) + 2, 0xFF00FF00)
+                      renderFontDrawText(font, n1 .. n2, getX(v1["x"]) - xmod, getY(v1["y"]) + 2, 0xFF00FF00)
                     else
                       renderFontDrawText(font12, z, getX(v1["x"]) - string.len(z) * 8.3, getY(v1["y"]) + 4, 0xFF00FF00)
                     end
@@ -1615,7 +1623,14 @@ function glonassModule()
     m14k = renderLoadTextureFromFile(getGameDirectory() .. "/moonloader/resource/edith/14k.png")
     m15k = renderLoadTextureFromFile(getGameDirectory() .. "/moonloader/resource/edith/15k.png")
     m16k = renderLoadTextureFromFile(getGameDirectory() .. "/moonloader/resource/edith/16k.png")
-    if resX > 1024 and resY >= 1024 then
+    xmod = 15
+    if resX >= 1300 and resY >= 1300 then
+      bX = (resX - 1300) / 2
+      bY = (resY - 1300) / 2
+      size = 1300
+      xmod = 24
+      font = renderCreateFont("Impact", 14, 4)
+    elseif resX > 1024 and resY >= 1024 then
       bX = (resX - 1024) / 2
       bY = (resY - 1024) / 2
       size = 1024
