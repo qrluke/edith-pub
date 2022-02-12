@@ -27,7 +27,7 @@ DELAY = int(sys.argv[1])
 
 app = Sanic(name='edith-server')
 
-twink = {}
+twinks = {"data": {}}
 
 last_changed = 0
 
@@ -415,7 +415,7 @@ if __name__ == '__main__':
 
     startup_check("config/twinks.json")
     with open("config/twinks.json", "r") as fp:
-        twink = js.load(fp)
+        twinks["data"] = js.load(fp)
 
     with io.open('config/whitelist.txt') as file:
         for line in file:
@@ -442,7 +442,7 @@ if __name__ == '__main__':
     if str(os.environ["enable_top"]) == "1":
         from topinfo import topinfo
 
-        topinfo_thread = threading.Thread(target=topinfo, args=[twink])
+        topinfo_thread = threading.Thread(target=topinfo, args=[twinks])
         topinfo_thread.daemon = True
         topinfo_thread.start()
 

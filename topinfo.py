@@ -18,6 +18,7 @@ from utils import startup_check
 
 def topinfo(twinks):
     startup_check('config/discord.json')
+    startup_check('config/twinks.json')
 
     con = sqlite3.connect('db/deathlist.db')
     cur = con.cursor()
@@ -92,11 +93,16 @@ def topinfo(twinks):
 
         return last_output
 
+    @repeat(every(15).minutes)
+    def upd_twinks():
+        with open("config/twinks.json", "r") as fp:
+            twinks["data"] = js.load(fp)
+
     @repeat(every(5).minutes)
     def upd_all():
         embed = dico.Embed(
             title=f"За всё время",
-            description=f"```markdown\n{genAsciiTable(getTop(cur, twinks, 0, False))}```",
+            description=f"```markdown\n{genAsciiTable(getTop(cur, twinks['data'], 0, False))}```",
             timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
             color=0x348cb2,
         )
@@ -118,7 +124,7 @@ def topinfo(twinks):
 
         embed = dico.Embed(
             title=f"За неделю",
-            description=f"```markdown\n{genAsciiTable(getTop(cur, twinks, timestamp, False))}```",
+            description=f"```markdown\n{genAsciiTable(getTop(cur, twinks['data'], timestamp, False))}```",
             timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
             color=0x348cb2,
         )
@@ -139,7 +145,7 @@ def topinfo(twinks):
 
         embed = dico.Embed(
             title=f"За сутки",
-            description=f"```markdown\n{genAsciiTable(getTop(cur, twinks, timestamp, False))}```",
+            description=f"```markdown\n{genAsciiTable(getTop(cur, twinks['data'], timestamp, False))}```",
             timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
             color=0x348cb2,
         )
@@ -159,7 +165,7 @@ def topinfo(twinks):
         if day.hour < 5:
             timestamp = timestamp - 86400
 
-        top = getTop(cur, twinks, timestamp, False)
+        top = getTop(cur, twinks['data'], timestamp, False)
 
         if len(top) > 0:
             with io.open('config/discord.json') as file:
@@ -167,7 +173,7 @@ def topinfo(twinks):
 
             embed = dico.Embed(
                 title=f"Доска почёта",
-                description=f"```markdown\n{genAsciiTable(getTop(cur, twinks, timestamp, False), 5)}```",
+                description=f"```markdown\n{genAsciiTable(getTop(cur, twinks['data'], timestamp, False), 5)}```",
                 timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
                 color=0x4D220E,
             )
