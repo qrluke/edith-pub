@@ -2450,15 +2450,17 @@ function capturetimerModule()
   }
 
   local onShowTextDraw = function(id, tab)
-    if not (os.time() - checkafk > 5) then
-      if tab.text:find("~y~KILLS~n~") then
-        senddraw = {}
-        senddraw.type = "new"
-        senddraw.text = tab.text
-        waitfordraw = true
-        --print(tab.text)
-        --~n~~g~Rifa: ~w~0~n~~r~Aztec: ~w~1
-        --task send to server to initiate capture w/o timing
+    if id and tab then
+      if not (os.time() - checkafk > 5) then
+        if tab.text:find("~y~KILLS~n~") then
+          senddraw = {}
+          senddraw.type = "new"
+          senddraw.text = tab.text
+          waitfordraw = true
+          --print(tab.text)
+          --~n~~g~Rifa: ~w~0~n~~r~Aztec: ~w~1
+          --task send to server to initiate capture w/o timing
+        end
       end
     end
   end
@@ -9000,34 +9002,36 @@ function deathListModule()
   end
 
   local onShowTextDraw = function(id, tab)
-    if tab.text:find("~y~KILLS~n~") then
-      terra = true
-      terra_id = id
-    end
-    if tab.flags == 18 then
-      if string.find(tab.text, "KILL") ~= nil then
-        name = string.match(string.gsub(tab.text, ' %- KILL', ''), '(.+) %-')
-        if setContains(killedBitches, name) then
-          local time = os.time(os.date("!*t")) - killedBitches[name]
-          if time > 5 then
-            if setContains(woundedBitches, name) then
-              local time = os.time(os.date("!*t")) - woundedBitches[name]
-              if time < 2 then
-                addToSet(killedBitches, name)
-                checkIfAfkKill(name)
+    if id and tab then
+      if tab.text:find("~y~KILLS~n~") then
+        terra = true
+        terra_id = id
+      end
+      if tab.flags == 18 then
+        if string.find(tab.text, "KILL") ~= nil then
+          name = string.match(string.gsub(tab.text, ' %- KILL', ''), '(.+) %-')
+          if setContains(killedBitches, name) then
+            local time = os.time(os.date("!*t")) - killedBitches[name]
+            if time > 5 then
+              if setContains(woundedBitches, name) then
+                local time = os.time(os.date("!*t")) - woundedBitches[name]
+                if time < 2 then
+                  addToSet(killedBitches, name)
+                  checkIfAfkKill(name)
+                end
               end
             end
+          else
+            addToSet(killedBitches, name)
+            checkIfAfkKill(name)
           end
-        else
-          addToSet(killedBitches, name)
-          checkIfAfkKill(name)
         end
       end
-    end
-    if tab.flags == 24 then
-      if string.find(tab.text, "KILL") ~= nil then
-        name = string.match(string.gsub(tab.text, '%-%d[%d.,]* %- KILL', ''), '(.+) %-')
-        lastKilledBy = name
+      if tab.flags == 24 then
+        if string.find(tab.text, "KILL") ~= nil then
+          name = string.match(string.gsub(tab.text, '%-%d[%d.,]* %- KILL', ''), '(.+) %-')
+          lastKilledBy = name
+        end
       end
     end
   end
