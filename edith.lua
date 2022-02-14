@@ -1634,6 +1634,8 @@ function glonassModule()
       bX = (resX - 1024) / 2
       bY = (resY - 1024) / 2
       size = 1024
+      xmod = 20
+      font = renderCreateFont("Impact", 12, 4)
     elseif resX > 720 and resY >= 720 then
       bX = (resX - 720) / 2
       bY = (resY - 720) / 2
