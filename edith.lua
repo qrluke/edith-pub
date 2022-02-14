@@ -7789,7 +7789,8 @@ function kunaiModule()
               else
                 wait(0)
                 disconnect()
-                sampProcessChatInput("/q")
+                wait(300)
+                pcall(sampProcessChatInput, "/q")
               end
             end
           end
