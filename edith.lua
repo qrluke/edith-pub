@@ -232,6 +232,7 @@ end
   drugsmats = drugsmatsModule()
   kunai = kunaiModule()
   discord = discordModule()
+  checker = checkerModule()
 
   settings = inicfg.load(
           {
@@ -287,6 +288,7 @@ end
             drugsmats = drugsmats.defaults,
             kunai = kunai.defaults,
             discord = discord.defaults,
+            checker = checker.defaults
           },
           "edith"
   )
@@ -373,6 +375,7 @@ end
   table.insert(threads, lua_thread.create(drugsmats.checkboost))
   table.insert(threads, lua_thread.create(kunai.main))
   table.insert(threads, lua_thread.create(discord.main))
+  table.insert(threads, lua_thread.create(checker.main))
 
   function callMenu(id, pos, title)
     if title and title:find("клавиш") then
@@ -846,6 +849,7 @@ function updateMenu()
     drugsmats.desc(),
     kunai.desc(),
     discord.desc(),
+    checker.desc(),
     "\nP.S. Подробная информация и настройки в разделе каждого модуля."
   }
 
@@ -957,6 +961,7 @@ function updateMenu()
     drugsmats.getMenu(),
     kunai.getMenu(),
     discord.getMenu(),
+    checker.getMenu(),
     {
       title = " "
     },
@@ -1001,6 +1006,7 @@ function updateMenu()
         drugsmats.enable()
         kunai.enable()
         discord.enable()
+        checker.enable()
 
         inicfg.save(settings, "edith")
         thisScript():reload()
@@ -1044,6 +1050,7 @@ function updateMenu()
         drugsmats.disable()
         kunai.disable()
         discord.disable()
+        checker.disable()
 
         inicfg.save(settings, "edith")
         thisScript():reload()
@@ -9990,6 +9997,217 @@ end
 --------------------------------------------------------------------------------
 ------------------------------------TEMPLATE------------------------------------
 --------------------------------------------------------------------------------
+function checkerModule()
+  local myname, font, checker_update, doRender, ini, achecker, setpos, _, id
+
+  local doRender = function()
+    if setpos then
+      sampSetCursorMode(2)
+      ini.Settings.X, ini.Settings.Y = getCursorPos()
+      if wasKeyPressed(1) then
+        setpos = nil
+        inicfg.save(ini, "edith-checker")
+        sampSetCursorMode(0)
+      end
+    end
+    if ini[myname].render then
+      local x, y = ini.Settings.X, ini.Settings.Y
+      y = y + renderGetFontDrawHeight(font)
+      local count = 0
+      for i = 0, sampGetMaxPlayerId() do
+        if sampIsPlayerConnected(i) then
+          local name = sampGetPlayerNickname(i)
+          local stream, ped = sampGetCharHandleBySampPlayerId(i)
+          local score = sampGetPlayerScore(i)
+          local color = sampGetPlayerColor(i)
+          color = string.format("%X", tonumber(color))
+          if #color == 8 then
+            _, color = string.match(color, "(..)(......)")
+          end
+          if ini ~= nil and ini.admins[name] ~= nil then
+            y = y + renderGetFontDrawHeight(font)
+            local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
+            local text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
+            renderFontDrawText(font, text, x, y, -1)
+            count = count + 1
+          end
+        end
+      end
+      renderFontDrawText(font, 'Админов в сети: ' .. count, ini.Settings.X, ini.Settings.Y, -1)
+      renderFontDrawText(font, "Список получен в " .. os.date("%X", ini.Settings.Upd), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font), -1)
+    end
+  end
+
+  local showAdminsList = function()
+    local count = 0
+    local dialogText = "Имя[ID]\tАдмин уровень\tИгровой уровень\n"
+    for i = 0, sampGetMaxPlayerId() do
+      if sampIsPlayerConnected(i) then
+        local name = sampGetPlayerNickname(i)
+        local score = sampGetPlayerScore(i)
+        local color = sampGetPlayerColor(i)
+        color = string.format("%X", tonumber(color))
+        if #color == 8 then
+          _, color = string.match(color, "(..)(......)")
+        end
+        if ini ~= nil and ini.admins[name] ~= nil then
+          local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
+          dialogText = string.format('%s{%s}%s{FFFFFF} [%d]\t%s-%d\t%d\n', dialogText, color, name, i, string.sub(server, 1, 4), lvl, score)
+          count = count + 1
+        end
+      end
+    end
+    sampShowDialog(0, "Админов в сети: " .. count, dialogText, "Закрыть", "", 5)
+  end
+
+  local download_admins = function()
+    local response_path = os.tmpname()
+    downloadUrlToFile("http://185.139.68.104:43771", response_path, function(id, status, p1, p2)
+      if status == dlstatus.STATUS_ENDDOWNLOADDATA then
+        local f = io.open(response_path, "r")
+        if f then
+          local text = f:read("*a")
+          if text ~= nil then
+            local json = decodeJson(text)
+            if json["result"] == "ok" then
+              local data = decodeJson(json["data"])
+              local new_data = {}
+              for k, v in pairs(data) do
+                new_data[v.name] = string.format("%s %s", v.server, v.lvl)
+              end
+              ini["admins"] = new_data
+              ini.Settings.Upd = json["update"]
+              inicfg.save(ini, "edith-checker")
+            end
+          end
+          io.close(f)
+          os.remove(response_path)
+        end
+      end
+    end)
+  end
+
+  local mainThread = function()
+    if not isSampLoaded() or not isSampfuncsLoaded() then
+      return
+    end
+    while not isSampAvailable() do
+      wait(0)
+    end
+    if settings.checker.enable then
+      _, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      myname = sampGetPlayerNickname(id)
+      ini = inicfg.load({
+        Settings = {
+          FontName = 'Segoe UI',
+          FontSize = 10,
+          FontFlag = 13,
+          X = 153,
+          Y = 634,
+          Upd = 0
+        },
+        [myname] = {
+          render = false
+        },
+        admins = {
+          ["Flazy_Fad"] = "head 10"
+        }
+      }, "edith-checker")
+      inicfg.save(ini, "edith-checker")
+      font = renderCreateFont(ini.Settings.FontName, ini.Settings.FontSize, ini.Settings.FontFlag)
+      checker_update = 0
+      while true do
+        wait(0)
+        doRender()
+        if achecker == nil or os.time() - achecker > 3600 then
+          achecker = os.time()
+          pcall(download_admins)
+        end
+      end
+    end
+  end
+
+  local getMenu = function()
+    return {
+      title = "{7ef3fa}* " .. (settings.checker.enable and "{00ff66}" or "{ff0000}") .. "CHECKER",
+      submenu = {
+        {
+          title = "Информация о модуле",
+          onclick = function()
+            sampShowDialog(
+                    0,
+                    "{7ef3fa}/edith v." .. thisScript().version .. ' - информация о модуле {00ff66}"CHECKER"',
+                    "{00ff66}CHECKER{ffffff}\nЧекер админов рубина, список берется с форума срп.\nЕсли перестанет работать, его будут фиксить люди, которые его написали.\n\n1. /admins list - диалог с админами\n2. /admins pos - сменить позицию рендера\n3. /admins checker - вкл/выкл рендера.",
+                    "Окей"
+            )
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Включить: " .. tostring(settings.checker.enable),
+          onclick = function()
+            settings.checker.enable = not settings.checker.enable
+            inicfg.save(settings, "edith")
+            thisScript():reload()
+          end
+        }
+      }
+    }
+  end
+
+  local description = function()
+    return "{7ef3fa}* " .. (settings.checker.enable and "{00ff66}" or "{ff0000}") .. "CHECKER - {ffffff}Чекер админов, данные берутся с форума срп."
+  end
+
+  local enableAll = function()
+    settings.checker.enable = true
+  end
+
+  local disableAll = function()
+    settings.checker.enable = false
+  end
+
+  local defaults = {
+    enable = true
+  }
+
+  local onSendCommand = function(cmd)
+    if settings.checker.enable then
+      local command, params = string.match(cmd, "^%/([^ ]*)(.*)")
+      if command ~= nil and params ~= nil and command:lower() == "admins" then
+        if params:lower() == " pos" then
+          setpos = true
+          return false
+        end
+        if params:lower() == " checker" then
+          ini[myname].render = not ini[myname].render
+          inicfg.save(ini)
+          return false
+        end
+        if params:lower() == " list" then
+          showAdminsList()
+          return false
+        end
+      end
+    end
+  end
+
+  return {
+    main = mainThread,
+    getMenu = getMenu,
+    desc = description,
+    enable = enableAll,
+    disable = disableAll,
+    defaults = defaults,
+
+    onSendCommand = onSendCommand
+  }
+end
+--------------------------------------------------------------------------------
+------------------------------------TEMPLATE------------------------------------
+--------------------------------------------------------------------------------
 --[[function xxxModule()
   local mainThread = function()
 
@@ -10196,6 +10414,10 @@ function onSendCommand(cmd)
     return table.unpack(res)
   end
   local res = processEvent(ganghelper.onSendCommand, table.pack(cmd))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(checker.onSendCommand, table.pack(cmd))
   if res then
     return table.unpack(res)
   end
