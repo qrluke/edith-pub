@@ -10014,7 +10014,7 @@ function checkerModule()
       local x, y = ini.Settings.X, ini.Settings.Y
       y = y + renderGetFontDrawHeight(font)
       local count = 0
-      for i = 0, sampGetMaxPlayerId() do
+      for i = 0, 999 do
         if sampIsPlayerConnected(i) then
           local name = sampGetPlayerNickname(i)
           local stream, ped = sampGetCharHandleBySampPlayerId(i)
@@ -10041,7 +10041,7 @@ function checkerModule()
   local showAdminsList = function()
     local count = 0
     local dialogText = "Имя[ID]\tАдмин уровень\tИгровой уровень\n"
-    for i = 0, sampGetMaxPlayerId() do
+    for i = 0, 999 do
       if sampIsPlayerConnected(i) then
         local name = sampGetPlayerNickname(i)
         local score = sampGetPlayerScore(i)
