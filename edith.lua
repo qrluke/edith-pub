@@ -2457,7 +2457,7 @@ function capturetimerModule()
         if tab.text:find("~y~KILLS~n~") then
           senddraw = {}
           senddraw.type = "new"
-          senddraw.text = tab.text
+          senddraw.text = tab.text:gsub("’", "")
           waitfordraw = true
           --print(tab.text)
           --~n~~g~Rifa: ~w~0~n~~r~Aztec: ~w~1
@@ -2472,7 +2472,7 @@ function capturetimerModule()
       if str:find("~y~KILLS~n~") then
         senddraw = {}
         senddraw.type = "upd"
-        senddraw.text = str
+        senddraw.text = str:gsub("’", "")
         waitfordraw = true
         --print(str)
         --~n~~g~Rifa: ~w~0~n~~r~Aztec: ~w~1
