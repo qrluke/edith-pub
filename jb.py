@@ -50,24 +50,24 @@ def post_embed(item, title):
     embed = dico.Embed(
         title=f"Жалоба: '{item['title']}'",
         url=item["id"],
-        description=re.sub(regex_html, '', item["summary"]),
+        description=re.sub(regex_html, '', item["summary"])[:1024],
         timestamp=time.strftime('%Y-%m-%dT%H:%M:%S', item["published_parsed"]),
         color=0x348cb2,
     )
     embed.set_author(name=item["authors"][0]["name"])
-    embed.add_field(name="Ваш никнейм", value=item["parsed_thread"]["form"][0], inline=True)
-    embed.add_field(name="Ваша фракция", value=item["parsed_thread"]["form"][1], inline=True)
+    embed.add_field(name="Ваш никнейм", value=item["parsed_thread"]["form"][0][:1024], inline=True)
+    embed.add_field(name="Ваша фракция", value=item["parsed_thread"]["form"][1][:1024], inline=True)
     embed.add_field(name="Триггер", value=item["trigger"], inline=True)
-    embed.add_field(name="Суть нарушения", value=item["parsed_thread"]["form"][2], inline=True)
-    embed.add_field(name="Доказательства", value=item["parsed_thread"]["form"][3], inline=False)
+    embed.add_field(name="Суть нарушения", value=item["parsed_thread"]["form"][2][:1024], inline=True)
+    embed.add_field(name="Доказательства", value=item["parsed_thread"]["form"][3][:1024], inline=False)
     if len(item["parsed_thread"]['links']) > 0:
         links = ""
         for link in item["parsed_thread"]["links"]:
             links = links + link + "\n"
         if links.replace("\n", "") != item["parsed_thread"]["form"][3]:
-            embed.add_field(name="Все ссылки", value=f"{links}", inline=False)
+            embed.add_field(name="Все ссылки", value=f"{links[:1024]}", inline=False)
     embed.set_thumbnail(url=item["parsed_thread"]["avatar"])
-    embed.set_footer(text=title)
+    embed.set_footer(text=title[:1024])
 
     affected_nicks = []
     for nick in nicks:
