@@ -10194,13 +10194,15 @@ function checkerModule()
             y = y + renderGetFontDrawHeight(font)
             local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
             local text = ""
-            if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
-              text = string.format(' {%s}%s{FFFFFF}[%d] {ff0000}[LVL: %s-%d] [Score: %d] [AFK: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, admins.data[name]["afk"], (stream and '(Рядом)' or ''))
-            else
-              text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
+            if server and lvl then
+              if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
+                text = string.format(' {%s}%s{FFFFFF}[%d] {ff0000}[LVL: %s-%d] [Score: %d] [AFK: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, admins.data[name]["afk"], (stream and '(Рядом)' or ''))
+              else
+                text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
+              end
+              renderFontDrawText(font, text, x, y, -1)
+              count = count + 1
             end
-            renderFontDrawText(font, text, x, y, -1)
-            count = count + 1
           end
         end
       end
@@ -10225,12 +10227,14 @@ function checkerModule()
         if ini ~= nil and ini.admins[name] ~= nil then
           local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
           local text = ""
-          if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
-            dialogText = string.format('%s{%s}%s{FFFFFF} [%d] {ff0000}AFK [%d]\t%s-%d\t%d\n', dialogText, color, name, i, admins.data[name]["afk"], string.sub(server, 1, 4), lvl, score)
-          else
-            dialogText = string.format('%s{%s}%s{FFFFFF} [%d]\t%s-%d\t%d\n', dialogText, color, name, i, string.sub(server, 1, 4), lvl, score)
+          if server and lvl then
+            if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
+              dialogText = string.format('%s{%s}%s{FFFFFF} [%d] {ff0000}AFK [%d]\t%s-%d\t%d\n', dialogText, color, name, i, admins.data[name]["afk"], string.sub(server, 1, 4), lvl, score)
+            else
+              dialogText = string.format('%s{%s}%s{FFFFFF} [%d]\t%s-%d\t%d\n', dialogText, color, name, i, string.sub(server, 1, 4), lvl, score)
+            end
+            count = count + 1
           end
-          count = count + 1
         end
       end
     end
@@ -10251,7 +10255,7 @@ function checkerModule()
               local new_data = {}
               table.insert(data,
                       {
-                        lvl = "xz",
+                        lvl = 99,
                         name = "Don_Elino",
                         server = "staff"
                       }
