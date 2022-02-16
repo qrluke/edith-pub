@@ -10320,7 +10320,7 @@ function checkerModule()
     end
     while true do
       wait(1000)
-      if settings.checker.enable then
+      if settings.checker.enable and settings.checker.check then
         if not stopCheck then
           if afkchecker == nil or os.time() - afkchecker > 60 then
             afkchecker = os.time()
@@ -10365,6 +10365,14 @@ function checkerModule()
             inicfg.save(settings, "edith")
             thisScript():reload()
           end
+        },
+        {
+          title = "¬ключить парсинг /admins: " .. tostring(settings.checker.check),
+          onclick = function()
+            settings.checker.check = not settings.checker.check
+            inicfg.save(settings, "edith")
+            thisScript():reload()
+          end
         }
       }
     }
@@ -10383,7 +10391,8 @@ function checkerModule()
   end
 
   local defaults = {
-    enable = true
+    enable = true,
+    check = true,
   }
 
   local prepare = function(request_table)
