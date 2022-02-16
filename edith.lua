@@ -6377,14 +6377,14 @@ function drugsmatsModule()
       for k, v in pairs(dialogLine) do
         text = text .. v .. "\n"
       end
-      sampShowDialog(0, 'Drugs-Mats: Настройки', text, "Выбрать", "Закрыть", 4)
+      sampShowDialog(5501, 'Drugs-Mats: Настройки', text, "Выбрать", "Закрыть", 4)
     end
     if int == 2 then
       d[7] = true
-      sampShowDialog(0, "Drugs-Mats: Изменение настроек", dtext, "Выбрать", "Назад", 1)
+      sampShowDialog(5501, "Drugs-Mats: Изменение настроек", dtext, "Выбрать", "Назад", 1)
     end
     if int == 3 then
-      sampShowDialog(0, "Drugs-Mats: Контакты автора", "{FFFFFF}Выбери что скопировать\t\nНик на Samp-Rp\tSerhiy_Rubin\nСтраничка {4c75a3}VK{FFFFFF}\tvk.com/id353828351\nГруппа {4c75a3}VK{FFFFFF} с модами\tvk.com/club161589495\n{10bef2}Skype{FFFFFF}\tserhiyrubin\n{7289da}Discord{FFFFFF}\tSerhiy_Rubin#3391", "Копировать", "Назад", 5)
+      sampShowDialog(5501, "Drugs-Mats: Контакты автора", "{FFFFFF}Выбери что скопировать\t\nНик на Samp-Rp\tSerhiy_Rubin\nСтраничка {4c75a3}VK{FFFFFF}\tvk.com/id353828351\nГруппа {4c75a3}VK{FFFFFF} с модами\tvk.com/club161589495\n{10bef2}Skype{FFFFFF}\tserhiyrubin\n{7289da}Discord{FFFFFF}\tSerhiy_Rubin#3391", "Копировать", "Назад", 5)
     end
   end
 
@@ -6393,7 +6393,7 @@ function drugsmatsModule()
     --  return
     --end
     if sampGetDialogCaption() == 'Drugs-Mats: Настройки' then
-      local result, button, list, input = sampHasDialogRespond(0)
+      local result, button, list, input = sampHasDialogRespond(5501)
       if result and button == 1 then
         if dialogLine ~= nil and dialogLine[list + 1] ~= nil then
           local str = dialogLine[list + 1]
@@ -6465,7 +6465,7 @@ function drugsmatsModule()
                 wait(0)
                 for k, v in pairs(vkeys) do
                   if not sampIsDialogActive() then
-                    sampShowDialog(0, "Смена клавиши", "{FFFFFF}Нажмите на любую клавишу\nОна будет использоваться для использования наркотика", "Выбрать", "Закрыть", 0)
+                    sampShowDialog(5501, "Смена клавиши", "{FFFFFF}Нажмите на любую клавишу\nОна будет использоваться для использования наркотика", "Выбрать", "Закрыть", 0)
                   end
                   if wasKeyPressed(v) and k ~= "VK_ESCAPE" and k ~= "VK_RETURN" and k ~= "VK_SPACE" then
                     keys = k
