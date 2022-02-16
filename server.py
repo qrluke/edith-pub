@@ -74,6 +74,7 @@ def clear_old():
 
 
 bikers = {"data": {}}
+admins_afk = {"timestamp": 0, "data": {}}
 
 
 def process_bikers(info):
@@ -81,6 +82,16 @@ def process_bikers(info):
 
     if "bikers" in info["data"]:
         bikers["data"] = info["data"]["bikers"]
+
+def process_admins(info, answer):
+    global admins_afk
+
+    if "admins" in info["data"]:
+        admins_afk["timestamp"] = ctime()
+        admins_afk["data"] = info["data"]["admins"]["data"]
+
+    if "requestAdminsAfk" in info["data"]:
+        answer["admins"] = admins_afk
 
 
 def process_glonass(info, answer):
@@ -380,6 +391,8 @@ async def process(info, answer):
             process_bikerinfo(info)
 
             process_marker(info, answer)
+            
+            process_admins(info, answer)
 
             answer["timestamp"] = time.time()
 

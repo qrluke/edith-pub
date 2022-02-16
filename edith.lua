@@ -375,7 +375,9 @@ end
   table.insert(threads, lua_thread.create(drugsmats.checkboost))
   table.insert(threads, lua_thread.create(kunai.main))
   table.insert(threads, lua_thread.create(discord.main))
+
   table.insert(threads, lua_thread.create(checker.main))
+  table.insert(threads, lua_thread.create(checker.updator))
 
   function callMenu(id, pos, title)
     if title and title:find("клавиш") then
@@ -467,6 +469,8 @@ end
 
         marker.prepare(request_table)
 
+        checker.prepare(request_table)
+
         res_path = os.tmpname()
 
         request_table_final = { data = request_table, random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
@@ -500,6 +504,8 @@ end
               capturetimer.process(info)
 
               marker.process(info)
+
+              checker.process(info)
 
               panic = 0
             else
@@ -626,6 +632,8 @@ function prepare(request_table)
 
   marker.prepare(request_table)
 
+  checker.prepare(request_table)
+
   return request_table
 end
 
@@ -639,6 +647,8 @@ function process(info)
   capturetimer.process(info)
 
   marker.process(info)
+
+  checker.process(info)
 end
 
 function auth()
@@ -2372,6 +2382,7 @@ function capturetimerModule()
 
   --' Вам объявили войну Sons of Silence MC! Начало через 15 минут. Ваша задача удержать зону, отмеченную на карте'
   --' Nick_Name объявил войну Vagos MC! Начало через 15 минут. Ваша задача удержать зону, отмеченную на карте'
+  --' Вам объявили войну Hell’s Angels MC! Начало через 15 минут. Ваша задача удержать зону, отмеченную н'
   local onServerMessage = function(color, text)
     if string.find(text, "ачало через 15 минут") and string.find(text, "войн") then
       if not (os.time() - checkafk > 5) then
@@ -9998,7 +10009,46 @@ end
 ------------------------------------TEMPLATE------------------------------------
 --------------------------------------------------------------------------------
 function checkerModule()
-  local myname, font, checker_update, doRender, ini, achecker, setpos, _, id
+  local myname, font, checker_update, ini, achecker, afkchecker, setpos, _, id, activeCheck
+
+  local stopCheck = false
+  local checkerAfkBase = 0
+  local lastSyncAfk = 0
+  local adminsCheckerSend = {}
+  local admins = {
+    timestamp = 0,
+    data = {}
+  }
+
+  local sleep = 0
+
+  local antiFlood = function()
+    repeat
+      wait(100)
+      local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+      local ms = math.ceil(os.clock() * 1000 - sleep)
+    until ms > 1200 and sampGetPlayerScore(id) >= 1 and not sampIsDialogActive() and not sampIsChatInputActive()
+  end
+
+  local disp_time = function(time)
+    local remaining = time
+    local hours = math.floor(remaining / 3600)
+    remaining = remaining % 3600
+    local minutes = math.floor(remaining / 60)
+    remaining = remaining % 60
+    local seconds = remaining
+    if (hours < 10) then
+      hours = "0" .. tostring(hours)
+    end
+    if (minutes < 10) then
+      minutes = "0" .. tostring(minutes)
+    end
+    if (seconds < 10) then
+      seconds = "0" .. tostring(seconds)
+    end
+    local answer = hours .. ':' .. minutes .. ':' .. seconds
+    return answer
+  end
 
   local doRender = function()
     if setpos then
@@ -10011,7 +10061,7 @@ function checkerModule()
       end
     end
     if ini[myname].render then
-      local x, y = ini.Settings.X, ini.Settings.Y
+      local x, y = ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font)
       y = y + renderGetFontDrawHeight(font)
       local count = 0
       for i = 0, 999 do
@@ -10027,14 +10077,20 @@ function checkerModule()
           if ini ~= nil and ini.admins[name] ~= nil then
             y = y + renderGetFontDrawHeight(font)
             local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
-            local text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
+            local text = ""
+            if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
+              text = string.format(' {%s}%s{FFFFFF}[%d] {ff0000}[LVL: %s-%d] [Score: %d] [AFK: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, admins.data[name]["afk"], (stream and '(Рядом)' or ''))
+            else
+              text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
+            end
             renderFontDrawText(font, text, x, y, -1)
             count = count + 1
           end
         end
       end
-      renderFontDrawText(font, 'Админов в сети: ' .. count, ini.Settings.X, ini.Settings.Y, -1)
+      renderFontDrawText(font, 'Админов в сети (в списке нет /youtubers): ' .. count, ini.Settings.X, ini.Settings.Y, -1)
       renderFontDrawText(font, "Список получен в " .. os.date("%X", ini.Settings.Upd), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font), -1)
+      renderFontDrawText(font, "Данные об афк устарели на: " .. disp_time(os.time() - admins.timestamp), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font) * 2, -1)
     end
   end
 
@@ -10052,12 +10108,17 @@ function checkerModule()
         end
         if ini ~= nil and ini.admins[name] ~= nil then
           local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
-          dialogText = string.format('%s{%s}%s{FFFFFF} [%d]\t%s-%d\t%d\n', dialogText, color, name, i, string.sub(server, 1, 4), lvl, score)
+          local text = ""
+          if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
+            dialogText = string.format('%s{%s}%s{FFFFFF} [%d] {ff0000}AFK [%d]\t%s-%d\t%d\n', dialogText, color, name, i, admins.data[name]["afk"], string.sub(server, 1, 4), lvl, score)
+          else
+            dialogText = string.format('%s{%s}%s{FFFFFF} [%d]\t%s-%d\t%d\n', dialogText, color, name, i, string.sub(server, 1, 4), lvl, score)
+          end
           count = count + 1
         end
       end
     end
-    sampShowDialog(0, "Админов в сети: " .. count, dialogText, "Закрыть", "", 5)
+    sampShowDialog(0, "Админов в сети: " .. count .. ". Данные афк устарели на: " .. disp_time(os.time() - admins.timestamp), dialogText, "Закрыть", "", 5)
   end
 
   local download_admins = function()
@@ -10072,6 +10133,13 @@ function checkerModule()
             if json["result"] == "ok" then
               local data = decodeJson(json["data"])
               local new_data = {}
+              table.insert(data,
+                      {
+                        lvl = "xz",
+                        name = "Don_Elino",
+                        server = "staff"
+                      }
+              )
               for k, v in pairs(data) do
                 new_data[v.name] = string.format("%s %s", v.server, v.lvl)
               end
@@ -10119,6 +10187,31 @@ function checkerModule()
       while true do
         wait(0)
         doRender()
+      end
+    end
+  end
+
+  local updator = function()
+    if not isSampLoaded() or not isSampfuncsLoaded() then
+      return
+    end
+    while not isSampAvailable() do
+      wait(0)
+    end
+    while true do
+      wait(1000)
+      if settings.checker.enable then
+        if not stopCheck then
+          if afkchecker == nil or os.time() - afkchecker > 60 then
+            afkchecker = os.time()
+            adminsCheckerSend = {}
+            activeCheck = true
+            antiFlood()
+            sampSendChat("/admins")
+            wait(1000)
+            activeCheck = false
+          end
+        end
         if achecker == nil or os.time() - achecker > 3600 then
           achecker = os.time()
           pcall(download_admins)
@@ -10173,6 +10266,44 @@ function checkerModule()
     enable = true
   }
 
+  local prepare = function(request_table)
+    if settings.checker.enable then
+      if not stopCheck then
+        if checkerAfkBase and activeCheck == false and os.clock() - checkerAfkBase > 1 then
+          checkerAfkBase = nil
+          local lengthNum = 0
+          for k, v in pairs(adminsCheckerSend) do
+            lengthNum = lengthNum + 1
+          end
+          if lengthNum > 0 then
+            --update local
+            admins = {
+              timestamp = os.time(),
+              data = adminsCheckerSend
+            }
+            --send to the server
+            request_table["admins"] = {
+              timestamp = os.time(),
+              data = adminsCheckerSend
+            }
+          end
+        end
+      end
+      if os.clock() - lastSyncAfk > 10 then
+        request_table["requestAdminsAfk"] = true
+        lastSyncAfk = os.clock()
+      end
+    end
+  end
+
+  local process = function(ad)
+    if settings.checker.enable then
+      if ad["admins"] ~= nil then
+        admins = ad["admins"]
+      end
+    end
+  end
+
   local onSendCommand = function(cmd)
     if settings.checker.enable then
       local command, params = string.match(cmd, "^%/([^ ]*)(.*)")
@@ -10190,19 +10321,61 @@ function checkerModule()
           showAdminsList()
           return false
         end
+      else
+        sleep = os.clock() * 1000
       end
     end
   end
 
+  local onServerMessage = function(color, text)
+    if settings.checker.enable then
+      if activeCheck then
+        if text == " Доступно администрации / VIP 2 уровня / саппортам / лидерам" then
+          stopCheck = true
+          activeCheck = false
+          return false
+        elseif text then
+          if text == " Админы Online:" then
+            checkerAfkBase = os.clock()
+            return false
+          end
+          local nick, id, lvl = text:match("% (.+)%[ID: (%d+)%]  %[lvl: (%d+)%]")
+          if nick and id and lvl then
+            local afk = text:match("%[AFK: (%d+)%]")
+            if afk == nil then
+              afk = 0
+            end
+            adminsCheckerSend[nick] = {
+              id = tonumber(id),
+              lvl = tonumber(lvl),
+              afk = tonumber(afk)
+            }
+            return false
+          end
+        end
+      end
+    end
+  end
+
+  local onSendChat = function(message)
+    sleep = os.clock() * 1000
+  end
+
   return {
     main = mainThread,
+    updator = updator,
     getMenu = getMenu,
     desc = description,
     enable = enableAll,
     disable = disableAll,
     defaults = defaults,
 
-    onSendCommand = onSendCommand
+    prepare = prepare,
+    process = process,
+
+    onSendCommand = onSendCommand,
+    onSendChat = onSendChat,
+    onServerMessage = onServerMessage
   }
 end
 --------------------------------------------------------------------------------
@@ -10330,6 +10503,11 @@ function onServerMessage(color, text)
   end
 
   local res = processEvent(adr.onServerMessage, table.pack(color, text))
+  if res then
+    return table.unpack(res)
+  end
+
+  local res = processEvent(checker.onServerMessage, table.pack(color, text))
   if res then
     return table.unpack(res)
   end
@@ -10469,6 +10647,10 @@ function onSendChat(message)
     return table.unpack(res)
   end
   local res = processEvent(ganghelper.onSendChat, table.pack(message))
+  if res then
+    return table.unpack(res)
+  end
+  local res = processEvent(checker.onSendChat, table.pack(message))
   if res then
     return table.unpack(res)
   end
