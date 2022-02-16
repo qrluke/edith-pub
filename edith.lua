@@ -2300,9 +2300,9 @@ function capturetimerModule()
               if timeleft_seconds < 10 then
                 timeleft_seconds = "0" .. timeleft_seconds
               end
-              sampTextdrawCreate(471, timeleft_minute .. ":" .. timeleft_seconds, 588, 428)
+              sampTextdrawCreate(471, timeleft_minute .. ":" .. timeleft_seconds, settings.capturetimer.posX, settings.capturetimer.posY)
               sampTextdrawSetStyle(471, 3)
-              sampTextdrawSetLetterSizeAndColor(471, 0.5, 2, -65536)
+              sampTextdrawSetLetterSizeAndColor(471, settings.capturetimer.size1, settings.capturetimer.size2, -65536)
               sampTextdrawSetOutlineColor(471, 1, -16777216)
             else
               timeleft_minute = math.floor(timeleft / 60)
@@ -2313,9 +2313,9 @@ function capturetimerModule()
               if timeleft_seconds < 10 then
                 timeleft_seconds = "0" .. timeleft_seconds
               end
-              sampTextdrawCreate(471, timeleft_minute .. ":" .. timeleft_seconds, 588, 428)
+              sampTextdrawCreate(471, timeleft_minute .. ":" .. timeleft_seconds, settings.capturetimer.posX, settings.capturetimer.posY)
               sampTextdrawSetStyle(471, 3)
-              sampTextdrawSetLetterSizeAndColor(471, 0.5, 2, -13447886)
+              sampTextdrawSetLetterSizeAndColor(471, settings.capturetimer.size1, settings.capturetimer.size2, -13447886)
               sampTextdrawSetOutlineColor(471, 1, -16777216)
             end
           else
@@ -2327,6 +2327,112 @@ function capturetimerModule()
           if sampTextdrawIsExists(471) then
             sampTextdrawDelete(471)
           end
+        end
+      end
+    end
+  end
+
+  local changepos = function()
+    local bckpX1 = settings.capturetimer.posX
+    local bckpY1 = settings.capturetimer.posY
+    local bckpS1 = settings.capturetimer.size1
+    local bckpS2 = settings.capturetimer.size2
+    sampShowDialog(
+            3838,
+            "Изменение положения и размера.",
+            '{ffcc00}Изменение положения textdraw.\n{ffffff}Изменить положение можно с помощью стрелок клавы.\n\n{ffcc00}Изменение размера textdraw.\n{ffffff}Изменить размер ПРОПОРЦИОНАЛЬНО можно с помощью {00ccff}\' - \'{ffffff} и {00ccff}\' + \'{ffffff}.\n{ffffff}Изменить размер по горизонтали можно с помощью {00ccff}\'9\'{ffffff} и {00ccff}\'0\'{ffffff}.\n{ffffff}Изменить размер по вертикали можно с помощью {00ccff}\'7\'{ffffff} и {00ccff}\'8\'{ffffff}.\n\n{ffcc00}Как принять изменения?\n{ffffff}Нажмите "Enter", чтобы принять изменения.\nНажмите пробел, чтобы отменить изменения.\nВ меню можно восстановить дефолт.',
+            "Я понял"
+    )
+    while sampIsDialogActive(3838) == true do
+      wait(100)
+    end
+    while true do
+      wait(0)
+      print(1)
+      if bckpY1 > 0 and bckpY1 < 480 and bckpX1 > 0 and bckpX1 < 640 then
+        wait(0)
+        if isKeyDown(40) and bckpY1 + 1 < 480 then
+          bckpY1 = bckpY1 + 1
+        end
+        if isKeyDown(38) and bckpY1 - 1 > 0 then
+          bckpY1 = bckpY1 - 1
+        end
+        if isKeyDown(37) and bckpX1 - 1 > 0 then
+          bckpX1 = bckpX1 - 1
+        end
+        if isKeyDown(39) and bckpX1 + 1 < 640 then
+          bckpX1 = bckpX1 + 1
+        end
+        if isKeyJustPressed(57) then
+          if bckpS1 - 0.1 > 0 then
+            bckpS1 = bckpS1 - 0.1
+          end
+        end
+        if isKeyJustPressed(48) then
+          if bckpS1 + 0.1 > 0 then
+            bckpS1 = bckpS1 + 0.1
+          end
+        end
+        if isKeyJustPressed(55) then
+          if bckpS2 - 0.1 > 0 then
+            bckpS2 = bckpS2 - 0.1
+          end
+        end
+        if isKeyJustPressed(56) then
+          if bckpS2 + 0.1 > 0 then
+            bckpS2 = bckpS2 + 0.1
+          end
+        end
+        if isKeyJustPressed(57) then
+          if bckpS1 - 0.1 > 0 then
+            bckpS1 = bckpS1 - 0.1
+          end
+        end
+        if isKeyJustPressed(48) then
+          if bckpS1 + 0.1 > 0 then
+            bckpS1 = bckpS1 + 0.1
+          end
+        end
+        if isKeyJustPressed(55) then
+          if bckpS2 - 0.1 > 0 then
+            bckpS2 = bckpS2 - 0.1
+          end
+        end
+        if isKeyJustPressed(56) then
+          if bckpS2 + 0.1 > 0 then
+            bckpS2 = bckpS2 + 0.1
+          end
+        end
+        if isKeyJustPressed(189) then
+          if bckpS1 - 0.1 > 0 then
+            bckpS1 = bckpS1 - 0.1
+            bckpS2 = bckpS1 * 5
+          end
+        end
+        if isKeyJustPressed(187) then
+          if bckpS1 + 0.1 > 0 then
+            bckpS1 = bckpS1 + 0.1
+            bckpS2 = bckpS1 * 5
+          end
+        end
+        sampTextdrawCreate(423, "10" .. ":" .. "00", bckpX1, bckpY1)
+        sampTextdrawSetStyle(423, 3)
+        sampTextdrawSetLetterSizeAndColor(423, bckpS1, bckpS2, -13447886)
+        sampTextdrawSetOutlineColor(423, 1, -16777216)
+        if isKeyJustPressed(13) then
+          sampTextdrawDelete(423)
+          settings.capturetimer.posX = bckpX1
+          settings.capturetimer.posY = bckpY1
+          settings.capturetimer.size1 = bckpS1
+          settings.capturetimer.size2 = bckpS2
+          addOneOffSound(0.0, 0.0, 0.0, 1052)
+          inicfg.save(settings, "edith")
+          break
+        end
+        if isKeyJustPressed(32) then
+          sampTextdrawDelete(423)
+          addOneOffSound(0.0, 0.0, 0.0, 1053)
+          break
         end
       end
     end
@@ -2363,7 +2469,13 @@ function capturetimerModule()
             settings.capturetimer.clistoff = not settings.capturetimer.clistoff
             inicfg.save(settings, "edith")
           end
-        }
+        },
+        {
+          title = "Изменить позицию и размер",
+          onclick = function()
+            table.insert(tempThreads, lua_thread.create(changepos))
+          end
+        },
       }
     }
   end
@@ -2467,6 +2579,10 @@ function capturetimerModule()
   local defaults = {
     enable = true,
     clistoff = true,
+    posX = 588,
+    posY = 428,
+    size1 = 0.5,
+    size2 = 2
   }
 
   local onShowTextDraw = function(id, tab)
