@@ -380,7 +380,7 @@ end
   table.insert(threads, lua_thread.create(checker.updator))
 
   function callMenu(id, pos, title)
-    if title and title:find("клавиш") then
+    if title and (title:find("клавиш") or title:find("позиц")) then
       return
     end
     while sampIsDialogActive() do
