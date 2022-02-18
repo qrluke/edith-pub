@@ -10069,35 +10069,35 @@ function bikerInfoModule()
                 data = {
                   f0 = {
                     type = getBizType(s1),
-                    control = b1
+                    control = b1:gsub("’", "")
                   },
                   f1 = {
                     type = getBizType(s2),
-                    control = b2
+                    control = b2:gsub("’", "")
                   },
                   f2 = {
                     type = getBizType(s3),
-                    control = b3
+                    control = b3:gsub("’", "")
                   },
                   f3 = {
                     type = getBizType(s4),
-                    control = b4
+                    control = b4:gsub("’", "")
                   },
                   f4 = {
                     type = getBizType(s5),
-                    control = b5
+                    control = b5:gsub("’", "")
                   },
                   s0 = {
                     type = getBizType(s6),
-                    control = b6
+                    control = b6:gsub("’", "")
                   },
                   s1 = {
                     type = getBizType(s7),
-                    control = b7
+                    control = b7:gsub("’", "")
                   },
                   s2 = {
                     type = getBizType(s8),
-                    control = b8
+                    control = b8:gsub("’", "")
                   },
                 }
               }
