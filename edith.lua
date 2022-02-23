@@ -7606,7 +7606,7 @@ function vspiwkaModule()
             result1, id1 = sampGetPlayerIdByCharHandle(playerPed)
             if result1 then
               antiFlood()
-              sampSendChat("/anim 23")
+              sampSendChat("/anim 42")
               wait(200)
             end
           end
