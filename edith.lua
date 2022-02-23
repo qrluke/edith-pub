@@ -5722,6 +5722,20 @@ function storojModule()
   local check_bonus_storoj = 0
   local bonus_getgun = 1
 
+  local curWkavAllText = ""
+  local curWkavDayText = ""
+  local last_upd = 0
+
+  local Set = function(list)
+    local set = {}
+    for _, l in ipairs(list) do
+      set[l] = true
+    end
+    return set
+  end
+
+  local skins_bikers = Set { 247, 248, 254, 100, 181, 178, 246 }
+
   local sleep = 0
 
   local antiFlood = function()
@@ -5733,75 +5747,108 @@ function storojModule()
   end
 
   local createWkav = function()
-    if settings.storoj.enable then
-      if settings.lost_today.date ~= os.date("%x") then
-        settings.lost_today.date = os.date("%x")
-        settings.lost_today.taken = 0
-        settings.lost_today.left = 0
-        settings.lost_today.st_dg = 0
-        settings.lost_today.st_sg = 0
-        settings.lost_today.st_smg = 0
-        settings.lost_today.st_ak47 = 0
-        settings.lost_today.st_m4 = 0
-        settings.lost_today.st_rf = 0
-        settings.lost_today.tk_dg = 0
-        settings.lost_today.tk_sg = 0
-        settings.lost_today.tk_smg = 0
-        settings.lost_today.tk_ak47 = 0
-        settings.lost_today.tk_m4 = 0
-        settings.lost_today.tk_rf = 0
-        inicfg.save(settings, "edith")
+    if os.clock() - last_upd > 3 then
+      last_upd = os.clock()
+
+      if getActiveInterior() ~= 11 then
+        if sampIs3dTextDefined(802) then
+          sampDestroy3dText(802)
+        end
+        if sampIs3dTextDefined(803) then
+          sampDestroy3dText(803)
+        end
+      else
+
+        if settings.storoj.enable then
+          if settings.lost_today.date ~= os.date("%x") then
+            settings.lost_today.date = os.date("%x")
+            settings.lost_today.taken = 0
+            settings.lost_today.left = 0
+            settings.lost_today.st_dg = 0
+            settings.lost_today.st_sg = 0
+            settings.lost_today.st_smg = 0
+            settings.lost_today.st_ak47 = 0
+            settings.lost_today.st_m4 = 0
+            settings.lost_today.st_rf = 0
+            settings.lost_today.tk_dg = 0
+            settings.lost_today.tk_sg = 0
+            settings.lost_today.tk_smg = 0
+            settings.lost_today.tk_ak47 = 0
+            settings.lost_today.tk_m4 = 0
+            settings.lost_today.tk_rf = 0
+            inicfg.save(settings, "edith")
+          end
+          local text11 = string.format(
+                  "Шкафчик с оружием\nБонусы на патроны: x%s\n\nВы потеряли за всё время:\n\nОружие|проебано|взято\nDeagle: %s/%s\n Shotgun: %s/%s\nSMG: %s/%s\nAK47: %s/%s\nM4: %s/%s\nRifle: %s/%s\n\nМатериалов взято со склада: %s\nПотрачено в бою/осталось на руках: %s\nМатериалов проебано: %s\n\nЭффективность: %.1f%%",
+                  bonus_getgun,
+                  settings.lost_alltime.st_dg,
+                  settings.lost_alltime.tk_dg,
+                  settings.lost_alltime.st_sg,
+                  settings.lost_alltime.tk_sg,
+                  settings.lost_alltime.st_smg,
+                  settings.lost_alltime.tk_smg,
+                  settings.lost_alltime.st_ak47,
+                  settings.lost_alltime.tk_ak47,
+                  settings.lost_alltime.st_m4,
+                  settings.lost_alltime.tk_m4,
+                  settings.lost_alltime.st_rf,
+                  settings.lost_alltime.tk_rf,
+                  settings.lost_alltime.taken,
+                  settings.lost_alltime.taken - settings.lost_alltime.left,
+                  settings.lost_alltime.left,
+                  (settings.lost_alltime.taken - settings.lost_alltime.left) * 100 / settings.lost_alltime.taken
+          )
+
+          if curWkavAllText ~= text11 then
+            sampCreate3dTextEx(802, text11, 0xFFFFFFFF, 244.5, 0.6, 1502.3, 4.0, false, -1, -1)
+            curWkavAllText = text11
+          end
+
+          local text22 = string.format(
+                  "Шкафчик с оружием\nБонусы на патроны: x%s\n\nВы потеряли сегодня:\n\nОружие|проебано|взято\nDeagle: %s/%s\n Shotgun: %s/%s\nSMG: %s/%s\nAK47: %s/%s\nM4: %s/%s\nRifle: %s/%s\n\nМатериалов взято со склада: %s\nПотрачено в бою/осталось на руках: %s\nМатериалов проебано: %s\n\nЭффективность: %.1f%%",
+                  bonus_getgun,
+                  settings.lost_today.st_dg,
+                  settings.lost_today.tk_dg,
+                  settings.lost_today.st_sg,
+                  settings.lost_today.tk_sg,
+                  settings.lost_today.st_smg,
+                  settings.lost_today.tk_smg,
+                  settings.lost_today.st_ak47,
+                  settings.lost_today.tk_ak47,
+                  settings.lost_today.st_m4,
+                  settings.lost_today.tk_m4,
+                  settings.lost_today.st_rf,
+                  settings.lost_today.tk_rf,
+                  settings.lost_today.taken,
+                  settings.lost_today.taken - settings.lost_today.left,
+                  settings.lost_today.left,
+                  (settings.lost_today.taken - settings.lost_today.left) * 100 / settings.lost_today.taken
+          )
+          if curWkavDayText ~= text22 then
+            sampCreate3dTextEx(803, text22, 0xFFFFFFFF, 244.5, 1.9, 1502.3, 4.0, false, -1, -1)
+            curWkavDayText = text22
+          end
+        end
       end
-      local text11 = string.format(
-              "Шкафчик с оружием\nБонусы на патроны: x%s\n\nВы потеряли за всё время:\n\nОружие|проебано|взято\nDeagle: %s/%s\n Shotgun: %s/%s\nSMG: %s/%s\nAK47: %s/%s\nM4: %s/%s\nRifle: %s/%s\n\nМатериалов взято со склада: %s\nПотрачено в бою/осталось на руках: %s\nМатериалов проебано: %s\n\nЭффективность: %.1f%%",
-              bonus_getgun,
-              settings.lost_alltime.st_dg,
-              settings.lost_alltime.tk_dg,
-              settings.lost_alltime.st_sg,
-              settings.lost_alltime.tk_sg,
-              settings.lost_alltime.st_smg,
-              settings.lost_alltime.tk_smg,
-              settings.lost_alltime.st_ak47,
-              settings.lost_alltime.tk_ak47,
-              settings.lost_alltime.st_m4,
-              settings.lost_alltime.tk_m4,
-              settings.lost_alltime.st_rf,
-              settings.lost_alltime.tk_rf,
-              settings.lost_alltime.taken,
-              settings.lost_alltime.taken - settings.lost_alltime.left,
-              settings.lost_alltime.left,
-              (settings.lost_alltime.taken - settings.lost_alltime.left) * 100 / settings.lost_alltime.taken
-      )
+    end
+  end
 
-      sampCreate3dTextEx(802, text11, 0xFFFFFFFF, 244.5, 0.6, 1502.3, 4.0, false, -1, -1)
-
-      local text22 = string.format(
-              "Шкафчик с оружием\nБонусы на патроны: x%s\n\nВы потеряли сегодня:\n\nОружие|проебано|взято\nDeagle: %s/%s\n Shotgun: %s/%s\nSMG: %s/%s\nAK47: %s/%s\nM4: %s/%s\nRifle: %s/%s\n\nМатериалов взято со склада: %s\nПотрачено в бою/осталось на руках: %s\nМатериалов проебано: %s\n\nЭффективность: %.1f%%",
-              bonus_getgun,
-              settings.lost_today.st_dg,
-              settings.lost_today.tk_dg,
-              settings.lost_today.st_sg,
-              settings.lost_today.tk_sg,
-              settings.lost_today.st_smg,
-              settings.lost_today.tk_smg,
-              settings.lost_today.st_ak47,
-              settings.lost_today.tk_ak47,
-              settings.lost_today.st_m4,
-              settings.lost_today.tk_m4,
-              settings.lost_today.st_rf,
-              settings.lost_today.tk_rf,
-              settings.lost_today.taken,
-              settings.lost_today.taken - settings.lost_today.left,
-              settings.lost_today.left,
-              (settings.lost_today.taken - settings.lost_today.left) * 100 / settings.lost_today.taken
-      )
-      sampCreate3dTextEx(803, text22, 0xFFFFFFFF, 244.5, 1.9, 1502.3, 4.0, false, -1, -1)
+  local isArenaActive = function()
+    if getActiveInterior() == 0 then
+      local x, y, z = getCharCoordinates(playerPed)
+      if z > 500 then
+        return true
+      else
+        return false
+      end
+    else
+      return false
     end
   end
 
   local mainThread = function()
     while true do
-      wait(100)
+      wait(200)
       if settings.storoj.enable then
         if not isCharDead(playerPed) then
           if hasCharGotWeapon(playerPed, 24) then
@@ -5846,54 +5893,57 @@ function storojModule()
             st_rf = 0
           end
         else
-          if st_dg > 0 or st_sg > 0 or st_smg > 0 or st_ak47 > 0 or st_m4 > 0 or st_rf > 0 then
-            if settings.storoj.report then
-              sampAddChatMessage(string.format("{7ef3fa}[EDITH]: {ffffff}Вы трагически погибли :(( {7ef3fa}dg: %s/%s, sg: %s/%s, smg: %s/%s, ak47: %s/%s, m4: %s/%s, rf: %s/%s", st_dg, tk_dg, st_sg, tk_sg, st_smg, tk_smg, st_ak47, tk_ak47, st_m4, tk_m4, st_rf, tk_rf), -1)
-              mat_dif = ((tk_dg - (tk_dg - st_dg)) * 3 + (tk_sg - (tk_sg - st_sg)) * 3 + (tk_smg - (tk_smg - st_smg)) * 2 + (tk_ak47 - (tk_ak47 - st_ak47)) * 3 + (tk_m4 - (tk_m4 - st_m4)) * 3 + (tk_rf - (tk_rf - st_rf)) * 5) / bonus_getgun
-              if mat_dif > 0 then
-                sampAddChatMessage(string.format("{7ef3fa}[EDITH]: {ffffff}Вы умудрились проебать оружия на {ef3226}%s {ffffff}материалов", mat_dif), -1)
+          if (st_dg > 0 or st_sg > 0 or st_smg > 0 or st_ak47 > 0 or st_m4 > 0 or st_rf > 0) and not isArenaActive() then
+            local skin = getCharModel(playerPed)
+            if skin and skins_bikers[skin] then
+              if settings.storoj.report then
+                sampAddChatMessage(string.format("{7ef3fa}[EDITH]: {ffffff}Вы трагически погибли :(( {7ef3fa}dg: %s/%s, sg: %s/%s, smg: %s/%s, ak47: %s/%s, m4: %s/%s, rf: %s/%s", st_dg, tk_dg, st_sg, tk_sg, st_smg, tk_smg, st_ak47, tk_ak47, st_m4, tk_m4, st_rf, tk_rf), -1)
+                mat_dif = ((tk_dg - (tk_dg - st_dg)) * 3 + (tk_sg - (tk_sg - st_sg)) * 3 + (tk_smg - (tk_smg - st_smg)) * 2 + (tk_ak47 - (tk_ak47 - st_ak47)) * 3 + (tk_m4 - (tk_m4 - st_m4)) * 3 + (tk_rf - (tk_rf - st_rf)) * 5) / bonus_getgun
+                if mat_dif > 0 then
+                  sampAddChatMessage(string.format("{7ef3fa}[EDITH]: {ffffff}Вы умудрились проебать оружия на {ef3226}%s {ffffff}материалов", mat_dif), -1)
+                end
               end
+              if settings.lost_today.date ~= os.date("%x") then
+                settings.lost_today.date = os.date("%x")
+                settings.lost_today.taken = 0
+                settings.lost_today.left = 0
+                settings.lost_today.st_dg = 0
+                settings.lost_today.st_sg = 0
+                settings.lost_today.st_smg = 0
+                settings.lost_today.st_ak47 = 0
+                settings.lost_today.st_m4 = 0
+                settings.lost_today.st_rf = 0
+                settings.lost_today.tk_dg = 0
+                settings.lost_today.tk_sg = 0
+                settings.lost_today.tk_smg = 0
+                settings.lost_today.tk_ak47 = 0
+                settings.lost_today.tk_m4 = 0
+                settings.lost_today.tk_rf = 0
+              end
+              settings.lost_today.left = settings.lost_today.left + (st_dg * 3 + st_sg * 3 + st_smg * 2 + st_ak47 * 3 + st_m4 * 3 + st_rf * 5) / bonus_getgun
+              settings.lost_today.st_dg = settings.lost_today.st_dg + st_dg
+              settings.lost_today.st_sg = settings.lost_today.st_sg + st_sg
+              settings.lost_today.st_smg = settings.lost_today.st_smg + st_smg
+              settings.lost_today.st_ak47 = settings.lost_today.st_ak47 + st_ak47
+              settings.lost_today.st_m4 = settings.lost_today.st_m4 + st_m4
+              settings.lost_today.st_rf = settings.lost_today.st_rf + st_rf
+
+              settings.lost_alltime.left = settings.lost_alltime.left + (st_dg * 3 + st_sg * 3 + st_smg * 2 + st_ak47 * 3 + st_m4 * 3 + st_rf * 5) / bonus_getgun
+              settings.lost_alltime.st_dg = settings.lost_alltime.st_dg + st_dg
+              settings.lost_alltime.st_sg = settings.lost_alltime.st_sg + st_sg
+              settings.lost_alltime.st_smg = settings.lost_alltime.st_smg + st_smg
+              settings.lost_alltime.st_ak47 = settings.lost_alltime.st_ak47 + st_ak47
+              settings.lost_alltime.st_m4 = settings.lost_alltime.st_m4 + st_m4
+              settings.lost_alltime.st_rf = settings.lost_alltime.st_rf + st_rf
+
+              inicfg.save(settings, "edith")
             end
-            if settings.lost_today.date ~= os.date("%x") then
-              settings.lost_today.date = os.date("%x")
-              settings.lost_today.taken = 0
-              settings.lost_today.left = 0
-              settings.lost_today.st_dg = 0
-              settings.lost_today.st_sg = 0
-              settings.lost_today.st_smg = 0
-              settings.lost_today.st_ak47 = 0
-              settings.lost_today.st_m4 = 0
-              settings.lost_today.st_rf = 0
-              settings.lost_today.tk_dg = 0
-              settings.lost_today.tk_sg = 0
-              settings.lost_today.tk_smg = 0
-              settings.lost_today.tk_ak47 = 0
-              settings.lost_today.tk_m4 = 0
-              settings.lost_today.tk_rf = 0
+
+            tk_dg, tk_sg, tk_smg, tk_ak47, tk_m4, tk_rf = 0, 0, 0, 0, 0, 0
+
+            while isCharDead(playerPed) do
+              wait(100)
             end
-            settings.lost_today.left = settings.lost_today.left + (st_dg * 3 + st_sg * 3 + st_smg * 2 + st_ak47 * 3 + st_m4 * 3 + st_rf * 5) / bonus_getgun
-            settings.lost_today.st_dg = settings.lost_today.st_dg + st_dg
-            settings.lost_today.st_sg = settings.lost_today.st_sg + st_sg
-            settings.lost_today.st_smg = settings.lost_today.st_smg + st_smg
-            settings.lost_today.st_ak47 = settings.lost_today.st_ak47 + st_ak47
-            settings.lost_today.st_m4 = settings.lost_today.st_m4 + st_m4
-            settings.lost_today.st_rf = settings.lost_today.st_rf + st_rf
-
-            settings.lost_alltime.left = settings.lost_alltime.left + (st_dg * 3 + st_sg * 3 + st_smg * 2 + st_ak47 * 3 + st_m4 * 3 + st_rf * 5) / bonus_getgun
-            settings.lost_alltime.st_dg = settings.lost_alltime.st_dg + st_dg
-            settings.lost_alltime.st_sg = settings.lost_alltime.st_sg + st_sg
-            settings.lost_alltime.st_smg = settings.lost_alltime.st_smg + st_smg
-            settings.lost_alltime.st_ak47 = settings.lost_alltime.st_ak47 + st_ak47
-            settings.lost_alltime.st_m4 = settings.lost_alltime.st_m4 + st_m4
-            settings.lost_alltime.st_rf = settings.lost_alltime.st_rf + st_rf
-
-            inicfg.save(settings, "edith")
-          end
-
-          tk_dg, tk_sg, tk_smg, tk_ak47, tk_m4, tk_rf = 0, 0, 0, 0, 0, 0
-
-          while isCharDead(playerPed) do
-            wait(100)
           end
         end
 
