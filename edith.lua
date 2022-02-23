@@ -10229,52 +10229,6 @@ function checkerModule()
     return answer
   end
 
-  local doRender = function()
-    if setpos then
-      sampSetCursorMode(2)
-      ini.Settings.X, ini.Settings.Y = getCursorPos()
-      if wasKeyPressed(1) then
-        setpos = nil
-        inicfg.save(ini, "edith-checker")
-        sampSetCursorMode(0)
-      end
-    end
-    if ini[myname].render then
-      local x, y = ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font)
-      y = y + renderGetFontDrawHeight(font)
-      local count = 0
-      for i = 0, 999 do
-        if sampIsPlayerConnected(i) then
-          local name = sampGetPlayerNickname(i)
-          local stream, ped = sampGetCharHandleBySampPlayerId(i)
-          local score = sampGetPlayerScore(i)
-          local color = sampGetPlayerColor(i)
-          color = string.format("%X", tonumber(color))
-          if #color == 8 then
-            _, color = string.match(color, "(..)(......)")
-          end
-          if ini ~= nil and ini.admins[name] ~= nil then
-            y = y + renderGetFontDrawHeight(font)
-            local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
-            local text = ""
-            if server and lvl then
-              if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
-                text = string.format(' {%s}%s{FFFFFF}[%d] {ff0000}[LVL: %s-%d] [Score: %d] [AFK: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, admins.data[name]["afk"], (stream and '(Рядом)' or ''))
-              else
-                text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
-              end
-              renderFontDrawText(font, text, x, y, -1)
-              count = count + 1
-            end
-          end
-        end
-      end
-      renderFontDrawText(font, 'Админов в сети (в списке нет /youtubers): ' .. count, ini.Settings.X, ini.Settings.Y, -1)
-      renderFontDrawText(font, "Список получен в " .. os.date("%X", ini.Settings.Upd), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font), -1)
-      renderFontDrawText(font, "Данные об афк устарели на: " .. disp_time(os.time() - admins.timestamp), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font) * 2, -1)
-    end
-  end
-
   local showAdminsList = function()
     local count = 0
     local dialogText = "Имя[ID]\tАдмин уровень\tИгровой уровень\n"
@@ -10374,9 +10328,69 @@ function checkerModule()
       inicfg.save(ini, "edith-checker")
       font = renderCreateFont(ini.Settings.FontName, ini.Settings.FontSize, ini.Settings.FontFlag)
       checker_update = 0
+
+      local last_upd = 0
+      local render_table = {}
+      local count = 0
+
       while true do
         wait(0)
-        doRender()
+
+        if setpos then
+          sampSetCursorMode(2)
+          ini.Settings.X, ini.Settings.Y = getCursorPos()
+          if wasKeyPressed(1) then
+            setpos = nil
+            inicfg.save(ini, "edith-checker")
+            sampSetCursorMode(0)
+          end
+        end
+
+        if ini[myname].render then
+          if os.clock() - last_upd > 1 then
+            render_table = {}
+            count = 0
+            for i = 0, 999 do
+              if sampIsPlayerConnected(i) then
+                local name = sampGetPlayerNickname(i)
+                local stream, ped = sampGetCharHandleBySampPlayerId(i)
+                local score = sampGetPlayerScore(i)
+                local color = sampGetPlayerColor(i)
+
+                color = string.format("%X", tonumber(color))
+                if #color == 8 then
+                  _, color = string.match(color, "(..)(......)")
+                end
+                if ini ~= nil and ini.admins[name] ~= nil then
+                  local server, lvl = string.match(ini.admins[name], "(.+) (%d+)")
+                  local text = ""
+                  if server and lvl then
+                    if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
+                      text = string.format(' {%s}%s{FFFFFF}[%d] {ff0000}[LVL: %s-%d] [Score: %d] [AFK: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, admins.data[name]["afk"], (stream and '(Рядом)' or ''))
+                    else
+                      text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
+                    end
+                    table.insert(render_table, text)
+                    count = count + 1
+                  end
+                end
+              end
+            end
+            last_upd = os.clock()
+          end
+
+          local x, y = ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font)
+          y = y + renderGetFontDrawHeight(font)
+
+          for k, v in pairs(render_table) do
+            y = y + renderGetFontDrawHeight(font)
+            renderFontDrawText(font, v, x, y, -1)
+          end
+
+          renderFontDrawText(font, 'Админов в сети (в списке нет /youtubers): ' .. count, ini.Settings.X, ini.Settings.Y, -1)
+          renderFontDrawText(font, "Список получен в " .. os.date("%X", ini.Settings.Upd), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font), -1)
+          renderFontDrawText(font, "Данные об афк устарели на: " .. disp_time(os.time() - admins.timestamp), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font) * 2, -1)
+        end
       end
     end
   end
