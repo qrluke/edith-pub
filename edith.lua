@@ -8942,6 +8942,19 @@ function deathListModule()
     return nil
   end
 
+  local isArenaActive = function()
+    if getActiveInterior() == 0 then
+      local x, y, z = getCharCoordinates(playerPed)
+      if z > 500 then
+        return true
+      else
+        return false
+      end
+    else
+      return false
+    end
+  end
+
   local mainThread = function()
     if not isSampLoaded() then
       return
@@ -8954,7 +8967,7 @@ function deathListModule()
       if isCharDead(playerPed) then
         wait(250)
         res, killedId = sampGetPlayerIdByCharHandle(PLAYER_PED)
-        if res and tpmp == false then
+        if res and tpmp == false and not isArenaActive() then
           killedNick = sampGetPlayerNickname(killedId)
 
           if settings.deathlist.debug then
@@ -9015,7 +9028,7 @@ function deathListModule()
     if res then
       killedId = sampGetPlayerIdByNickname(name)
 
-      if killedId ~= nil and tpmp == false then
+      if killedId ~= nil and tpmp == false and not isArenaActive() then
         if sampIsPlayerPaused(killedId) then
           killedBitches[name] = killedBitches[name] - 2
 
@@ -9128,7 +9141,7 @@ function deathListModule()
 
   local onCreate3DText = function(id, color, position, distance, testLOS, attachedPlayerId, attachedVehicleId, text)
     if distance == 100 and (color == -1 or color == -16776961) and testLOS and attachedPlayerId == 65535 and attachedVehicleId == 65535 then
-      if tpmp == false then
+      if tpmp == false and not isArenaActive() then
         damage_col = damage_col + tonumber(text)
       end
     end
@@ -9155,7 +9168,7 @@ function deathListModule()
             print("сякнбхе сднакербнпемн")
           end
           local res, killerId = sampGetPlayerIdByCharHandle(PLAYER_PED)
-          if res and tpmp == false then
+          if res and tpmp == false and not isArenaActive() then
             local killerNick = sampGetPlayerNickname(killerId)
 
             if settings.deathlist.debug then
@@ -9243,7 +9256,7 @@ function deathListModule()
     if sampIsPlayerConnected(playerID) then
       if playerID < 1001 then
         enemyWeap = weaponID
-        if tpmp == false then
+        if tpmp == false and not isArenaActive() then
           damage_col_in = damage_col_in + damage
         end
       end
