@@ -10323,6 +10323,13 @@ function checkerModule()
                         server = "staff"
                       }
               )
+              table.insert(data,
+                      {
+                        lvl = 99,
+                        name = "Meow_Alferov",
+                        server = "staff"
+                      }
+              )
               for k, v in pairs(data) do
                 new_data[v.name] = string.format("%s %s", v.server, v.lvl)
               end
