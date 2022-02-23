@@ -558,7 +558,7 @@ end
     end))
   else
     table.insert(threads, lua_thread.create(function()
-      local client = websocket.client.copas({ timeout = 20 })
+      local client = websocket.client.copas({ timeout = 1 })
 
       client:connect(wip)
 
