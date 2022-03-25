@@ -581,9 +581,7 @@ end
         request_table = {}
 
         request_table_final = { data = prepare(request_table), random = os.clock(), creds = { nick = licensenick, pass = secrets.passwords[licensenick] } }
-
         client:send(encodeJson(request_table_final))
-
         local ps, res = pcall(decodeJson, client:receive())
         if res then
           process(res)
@@ -9915,7 +9913,7 @@ function ganghelperModule()
       end
       if settings.ganghelper.getguns then
         if string.find(text, " (.*) открыл%(а%) склад с оружием") then
-          if not (os.time() - checkafk > 5) and isBandit() then
+          if not (os.clock() - checkafk > 5) and isBandit() then
             for k, v in pairs(coord_resp) do
               dist = math.floor(getDistanceBetweenCoords3d(v[1], v[2], v[3], getCharCoordinates(playerPed)))
               if dist <= 100.0 then
