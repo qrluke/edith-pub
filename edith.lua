@@ -4916,6 +4916,37 @@ function getgunModule()
       end
     end
   end
+  
+  local changegetgunhotkey = function()
+    sampShowDialog(
+            989,
+            "Изменение горячей клавиши активации getgun",
+            'Нажмите "Окей", после чего нажмите нужную клавишу.\nНастройки будут изменены.',
+            "Окей",
+            "Закрыть"
+    )
+    while sampIsDialogActive(989) do
+      wait(100)
+    end
+    local resultMain, buttonMain, typ = sampHasDialogRespond(989)
+    if buttonMain == 1 then
+      while ke1y == nil do
+        wait(100)
+        for i = 1, 200 do
+          if isKeyDown(i) then
+            settings.getgun.key = i
+            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(i), -1)
+            addOneOffSound(0.0, 0.0, 0.0, 1052)
+            inicfg.save(settings, "edith")
+            ke1y = 1
+            break
+          end
+        end
+      end
+      ke1y = nil
+    end
+  end
+
 
   local getMenu = function()
     return {
@@ -5152,36 +5183,6 @@ function getgunModule()
     m4a1 = 0,
     rifle = 1
   }
-
-  local changegetgunhotkey = function()
-    sampShowDialog(
-            989,
-            "Изменение горячей клавиши активации getgun",
-            'Нажмите "Окей", после чего нажмите нужную клавишу.\nНастройки будут изменены.',
-            "Окей",
-            "Закрыть"
-    )
-    while sampIsDialogActive(989) do
-      wait(100)
-    end
-    local resultMain, buttonMain, typ = sampHasDialogRespond(989)
-    if buttonMain == 1 then
-      while ke1y == nil do
-        wait(100)
-        for i = 1, 200 do
-          if isKeyDown(i) then
-            settings.getgun.key = i
-            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(i), -1)
-            addOneOffSound(0.0, 0.0, 0.0, 1052)
-            inicfg.save(settings, "edith")
-            ke1y = 1
-            break
-          end
-        end
-      end
-      ke1y = nil
-    end
-  end
 
   local onShowDialog = function(dialog, style, title, button1, button2, text)
     if dialog == 123 and gg then
