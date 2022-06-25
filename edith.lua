@@ -11,11 +11,6 @@ local wip = "ws://localhost:33333/fast" --ip и порт сервера server.py (python3 s
 local remoteResourceURL = ip .. "resource/edith/" --путь туда, где хостится папки resource/edith
 local serverAddress = "127.0.0.1" --сервер, где вы играете
 
-local enableAutoUpdate = true --включить автообновление?
-local autoUpdateLink = ip .. "version.json" --ссылка на json с информацией об актуальной версии
-local autoUpdateScriptUrl = "" --ссылка на информацию о скрипте
-local autoUpdateChangelogCommand = "" --команда по которой откроется changelog
-
 local ckey1, ckey2 = nil, nil -- кастомный ключ для cipherModule()
 
 local enableErrorReporter = true --включить подгрузку фонового скрипта, который будет отправлять на сервер информацию о вылетах? информация обратывается на сервере через handle_crash_report(), в моём случае используется discord webhook
