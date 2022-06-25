@@ -35,6 +35,9 @@ services:
       crash_webhook: "discord webhook url"
       # current club, used for bikerinfo & captureinfo
       curb: "Name MC"
+      # sentry
+      enable_sentry: 0
+      sentry_dsn: "https://public@sentry.example.com/1"
     logging:
       options:
         max-size: '1m'

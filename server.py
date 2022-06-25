@@ -25,6 +25,16 @@ except IndexError:
 
 DELAY = int(sys.argv[1])
 
+if str(os.environ["enable_sentry"]) == "1":
+    import sentry_sdk
+    from sentry_sdk.integrations.sanic import SanicIntegration
+
+    sentry_sdk.init(
+       dsn=str(os.environ["sentry_dsn"]),
+       integrations=[SanicIntegration()]
+    )
+
+
 app = Sanic(name='edith-server')
 
 twinks = {"data": {}}
