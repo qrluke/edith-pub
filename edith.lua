@@ -163,13 +163,11 @@ function main()
     wait(-1)
   end
 
-  if enableAutoUpdate then
-    -- вырежи тут, если хочешь отключить проверку обновлений
-    if autoupdate_loaded and enable_autoupdate and Update then
-      pcall(Update.check, Update.json_url, Update.prefix, Update.url)
-    end
-    -- вырежи тут, если хочешь отключить проверку обновлений
+  -- вырежи тут, если хочешь отключить проверку обновлений
+  if autoupdate_loaded and enable_autoupdate and Update then
+    pcall(Update.check, Update.json_url, Update.prefix, Update.url)
   end
+  -- вырежи тут, если хочешь отключить проверку обновлений
 
   if enableErrorReporter then
     local need_to_inject = true
