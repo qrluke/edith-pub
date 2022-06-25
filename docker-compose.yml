@@ -3,7 +3,7 @@ version: "3.8"
 services:
   server:
     build:
-      context: .
+      context: backend
       dockerfile: docker/Dockerfile-edith
     ports:
       - "33333:33333"
@@ -44,10 +44,11 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - .:/sanic
+      - ./backend:/sanic
+      - .:/static
   discord-jb:
     build:
-      context: .
+      context: backend
       dockerfile: docker/Dockerfile-jb
     restart: unless-stopped
     environment:
@@ -62,11 +63,11 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - .:/sanic
+      - ./backend:/sanic
   # update whitelist.txt every 300 seconds
   update-whitelist:
     build:
-      context: .
+      context: backend
       dockerfile: docker/Dockerfile-whitelist
     restart: unless-stopped
     environment:
@@ -78,11 +79,11 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - ./config:/config
+      - ./backend/config:/config
   # update twinks.json every 300 seconds
   update-twinks:
     build:
-      context: .
+      context: backend
       dockerfile: docker/Dockerfile-twinks
     restart: unless-stopped
     environment:
@@ -94,11 +95,11 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - ./config:/config
+      - ./backend/config:/config
   # update discord.json every 300 seconds
   update-discord:
     build:
-      context: .
+      context: backend
       dockerfile: docker/Dockerfile-discord
     restart: unless-stopped
     environment:
@@ -110,4 +111,4 @@ services:
         max-file: '10'
       driver: json-file
     volumes:
-      - ./config:/config
+      - ./backend/config:/config
