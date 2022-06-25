@@ -24,4 +24,4 @@ COPY server.py .
 
 ENV DELAY=250
 
-ENTRYPOINT python3 server.py $DELAY
+ENTRYPOINT mkdir db && python3 server.py $DELAY
