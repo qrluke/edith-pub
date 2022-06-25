@@ -474,8 +474,8 @@ if __name__ == '__main__':
     app.blueprint(top.bp)
     app.blueprint(crash_handle.bp)
 
-    app.static('/resource', './resource')
-    app.static('version.json', 'version.json')
-    app.static('edith.lua', 'edith.lua')
+    app.static('/resource', '/static/resource')
+    app.static('version.json', '/static/version.json')
+    app.static('edith.lua', '/static/edith.lua')
 
     app.run(host='0.0.0.0', port=33333, auto_reload=False, debug=False)
