@@ -45,7 +45,7 @@ def bikerinfo(warehouse, warehouse_rest, capture_data, capture, capture_next):
               "Pagans MC": "\U0001F43C",
               "Outlaws MC": "\U0001F414",
               "Sons of Silence MC": "\U0001F409",
-              "Warlocks MC": "\U00002694",
+              "Warlocks MC": "\U0001F349",
               "Highwaymen MC": "\U0001F6B5",
               "Bandidos MC": "\U0001F171",
               "Free Souls MC": "\U0001F921",
