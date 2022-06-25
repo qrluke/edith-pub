@@ -135,7 +135,7 @@ def topinfo(twinks):
         else:
             api.edit_message(chn, edit["week"], embed=embed)
 
-    @repeat(every(5).seconds)
+    @repeat(every(5).minutes)
     def upd_day():
         day = datetime.datetime.now(pytz.timezone("Europe/Moscow"))
         timestamp = datetime.datetime.now(pytz.timezone("Europe/Moscow")).replace(hour=5, minute=0, second=0,
@@ -187,5 +187,11 @@ def topinfo(twinks):
                 api.create_message(os.environ["channel_flood"], embed=embed, component=row_top)
 
     while True:
-        run_pending()
+        try:
+            run_pending()
+        except Exception as E:
+            print(E)
+            time.sleep(20)
+            with open("errors.txt", 'a') as text:
+                text.write(f"{type(E).__name__} at line {E.__traceback__.tb_lineno} of {__file__}: {E}")
         time.sleep(1)
