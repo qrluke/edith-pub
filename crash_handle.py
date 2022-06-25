@@ -14,6 +14,8 @@ bp = Blueprint("crash_handle")
 @bp.route('/crash_report/<data:[^/].*?>')
 async def handle_crash_report(request, data: str):
     crash = js.loads(urllib.parse.unquote(data))
+    if crash.data.find("in the whitelist") != -1 or crash.data.find("Unknown server") != -1:
+        return text('-')
 
     webhook = DiscordWebhook(url=os.environ["crash_webhook"])
 
