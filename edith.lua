@@ -10406,7 +10406,7 @@ function checkerModule()
           end
 
           renderFontDrawText(font, 'Админов в сети (в списке нет /youtubers): ' .. count, ini.Settings.X, ini.Settings.Y, -1)
-          renderFontDrawText(font, "Список получен в " .. os.date("%X", ini.Settings.Upd), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font), -1)
+          renderFontDrawText(font, "Список получен в " .. os.date("%Y-%m-%d %X", ini.Settings.Upd), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font), -1)
           renderFontDrawText(font, "Данные об афк устарели на: " .. disp_time(os.time() - admins.timestamp), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font) * 2, -1)
         end
       end
