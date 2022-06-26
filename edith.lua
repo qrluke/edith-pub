@@ -10278,7 +10278,7 @@ function checkerModule()
 
   local download_admins = function()
     local response_path = os.tmpname()
-    downloadUrlToFile("http://185.139.68.104:43771", response_path, function(id, status, p1, p2)
+    downloadUrlToFile(ip .. "parse_admins", response_path, function(id, status, p1, p2)
       if status == dlstatus.STATUS_ENDDOWNLOADDATA then
         local f = io.open(response_path, "r")
         if f then
@@ -10286,7 +10286,7 @@ function checkerModule()
           if text ~= nil then
             local json = decodeJson(text)
             if json["result"] == "ok" then
-              local data = decodeJson(json["data"])
+              local data = json["data"]
               local new_data = {}
               table.insert(data,
                       {

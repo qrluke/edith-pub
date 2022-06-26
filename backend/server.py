@@ -469,10 +469,11 @@ if __name__ == '__main__':
         topinfo_thread.daemon = True
         topinfo_thread.start()
 
-    import top, crash_handle
+    import top, crash_handle, admin_parser
 
     app.blueprint(top.bp)
     app.blueprint(crash_handle.bp)
+    app.blueprint(admin_parser.bp)
 
     app.static('/resource', '/static/resource')
     app.static('version.json', '/static/version.json')
