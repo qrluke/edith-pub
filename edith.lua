@@ -10250,7 +10250,7 @@ function checkerModule()
   local showAdminsList = function()
     local count = 0
     local dialogText = "Имя[ID]\tАдмин уровень\tИгровой уровень\n"
-    for i = 0, 999 do
+    for i = 0, sampGetMaxPlayerId(false) do
       if sampIsPlayerConnected(i) then
         local name = sampGetPlayerNickname(i)
         local score = sampGetPlayerScore(i)
@@ -10368,7 +10368,7 @@ function checkerModule()
           if os.clock() - last_upd > 1 then
             render_table = {}
             count = 0
-            for i = 0, 999 do
+            for i = 0, sampGetMaxPlayerId(false) do
               if sampIsPlayerConnected(i) then
                 local name = sampGetPlayerNickname(i)
                 local stream, ped = sampGetCharHandleBySampPlayerId(i)
