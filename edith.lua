@@ -10211,6 +10211,7 @@ function checkerModule()
   local stopCheck = false
   local checkerAfkBase = 0
   local lastSyncAfk = 0
+  local justGotParsed = false
   local adminsCheckerSend = {}
   local admins = {
     timestamp = 0,
@@ -10265,7 +10266,9 @@ function checkerModule()
           if server and lvl then
             if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
               dialogText = string.format('%s{%s}%s{FFFFFF} [%d] {ff0000}AFK [%d]\t%s-%d\t%d\n', dialogText, color, name, i, admins.data[name]["afk"], string.sub(server, 1, 4), lvl, score)
-            else
+			elseif admins.data[name] == nil then
+              dialogText = string.format('%s{%s}%s{FFFFFF} [%d]\t%s-%d [нет в /admins]\t%d\n', dialogText, color, name, i, string.sub(server, 1, 4), lvl, score)
+			else
               dialogText = string.format('%s{%s}%s{FFFFFF} [%d]\t%s-%d\t%d\n', dialogText, color, name, i, string.sub(server, 1, 4), lvl, score)
             end
             count = count + 1
@@ -10273,7 +10276,7 @@ function checkerModule()
         end
       end
     end
-    sampShowDialog(0, "Админов в сети: " .. count .. ". Данные афк устарели на: " .. disp_time(os.time() - admins.timestamp), dialogText, "Закрыть", "", 5)
+    sampShowDialog(0, "Админов в сети: " .. count .. ". Данные /admins устарели на: " .. disp_time(os.time() - admins.timestamp), dialogText, "Закрыть", "", 5)
   end
 
   local download_admins = function()
@@ -10308,6 +10311,7 @@ function checkerModule()
               ini["admins"] = new_data
               ini.Settings.Upd = json["update"]
               inicfg.save(ini, "edith-checker")
+			  justGotParsed = true
             end
           end
           io.close(f)
@@ -10385,7 +10389,9 @@ function checkerModule()
                   if server and lvl then
                     if admins.data[name] ~= nil and admins.data[name]["afk"] ~= 0 and i == admins.data[name]["id"] then
                       text = string.format(' {%s}%s{FFFFFF}[%d] {ff0000}[LVL: %s-%d] [Score: %d] [AFK: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, admins.data[name]["afk"], (stream and '(Рядом)' or ''))
-                    else
+                    elseif admins.data[name] == nil then
+					    text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] [Нет в /admins] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
+					else
                       text = string.format(' {%s}%s{FFFFFF}[%d] [LVL: %s-%d] [Score: %d] %s', color, name, i, string.sub(server, 1, 4), lvl, score, (stream and '(Рядом)' or ''))
                     end
                     table.insert(render_table, text)
@@ -10407,7 +10413,7 @@ function checkerModule()
 
           renderFontDrawText(font, 'Админов в сети (в списке нет /youtubers): ' .. count, ini.Settings.X, ini.Settings.Y, -1)
           renderFontDrawText(font, "Список получен в " .. os.date("%Y-%m-%d %X", ini.Settings.Upd), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font), -1)
-          renderFontDrawText(font, "Данные об афк устарели на: " .. disp_time(os.time() - admins.timestamp), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font) * 2, -1)
+          renderFontDrawText(font, "Данные /admins устарели на: " .. disp_time(os.time() - admins.timestamp), ini.Settings.X, ini.Settings.Y + renderGetFontDrawHeight(font) * 2, -1)
         end
       end
     end
@@ -10520,9 +10526,10 @@ function checkerModule()
           end
         end
       end
-      if os.clock() - lastSyncAfk > 10 then
+      if os.clock() - lastSyncAfk > 10 or justGotParsed then
         request_table["requestAdminsAfk"] = true
         lastSyncAfk = os.clock()
+		justGotParsed = false
       end
     end
   end
@@ -10530,6 +10537,11 @@ function checkerModule()
   local process = function(ad)
     if settings.checker.enable then
       if ad["admins"] ~= nil then
+		for k, v in pairs(ad["admins"]["data"]) do
+			if ini.admins[k] == nil then
+			  ini.admins[k] = string.format("%s %s", "/admins", v.lvl)
+			end
+		end
         admins = ad["admins"]
       end
     end
