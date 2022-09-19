@@ -243,6 +243,7 @@ end
   deathlist = deathListModule()
   ganghelper = ganghelperModule()
   bikerinfo = bikerInfoModule()
+  officegetgun = officeGetgunModule()
 
   iznanka = iznankaModule()
   doublejump = doubleJumpModule()
@@ -299,6 +300,7 @@ end
             deathlist = deathlist.defaults,
             ganghelper = ganghelper.defaults,
             bikerinfo = bikerinfo.defaults,
+            officegetgun = officegetgun.defaults,
 
             iznanka = iznanka.defaults,
             doublejump = doublejump.defaults,
@@ -383,6 +385,7 @@ end
   table.insert(threads, lua_thread.create(warnings.main))
   table.insert(threads, lua_thread.create(deathlist.main))
   table.insert(threads, lua_thread.create(ganghelper.main))
+  table.insert(threads, lua_thread.create(officegetgun.main))
 
   table.insert(threads, lua_thread.create(iznanka.main))
   table.insert(threads, lua_thread.create(doublejump.main))
@@ -867,6 +870,7 @@ function updateMenu()
     deathlist.desc(),
     ganghelper.desc(),
     bikerinfo.desc(),
+    officegetgun.desc(),
     "\n{AAAAAA}Модули таранта",
     iznanka.desc(),
     doublejump.desc(),
@@ -969,6 +973,7 @@ function updateMenu()
     deathlist.getMenu(),
     ganghelper.getMenu(),
     bikerinfo.getMenu(),
+    officegetgun.getMenu(),
     {
       title = " "
     },
@@ -1024,6 +1029,7 @@ function updateMenu()
         deathlist.enable()
         ganghelper.enable()
         bikerinfo.enable()
+        officegetgun.enable()
 
         iznanka.enable()
         doublejump.enable()
@@ -1068,6 +1074,7 @@ function updateMenu()
         deathlist.disable()
         ganghelper.disable()
         bikerinfo.disable()
+		officegetgun.disable()
 
         iznanka.disable()
         doublejump.disable()
@@ -4965,7 +4972,6 @@ function getgunModule()
       ke1y = nil
     end
   end
-
 
   local getMenu = function()
     return {
@@ -10622,6 +10628,428 @@ function checkerModule()
   }
 end
 --------------------------------------------------------------------------------
+-------------------------------------OFFICE-------------------------------------
+--------------------------------------------------------------------------------
+function officeGetgunModule()
+  ogg = false
+  oggtable = {}
+
+  local mainThread = function()
+    while true do
+      wait(100)
+      ogg = false
+      while settings.officegetgun.enable and getActiveInterior() ~= 11 do
+        wait(100)
+        if
+        wasKeyPressed(settings.officegetgun.key) and sampIsChatInputActive() == false and
+            isSampfuncsConsoleActive() == false and
+            sampIsDialogActive() == false
+        then
+          oggtable["sdpistol"] = settings.officegetgun.sdpistol
+          oggtable["deagle"] = settings.officegetgun.deagle
+          oggtable["shotgun"] = settings.officegetgun.shotgun
+          oggtable["smg"] = settings.officegetgun.smg
+          oggtable["ak47"] = settings.officegetgun.ak47
+          oggtable["m4a1"] = settings.officegetgun.m4a1
+          oggtable["rifle"] = settings.officegetgun.rifle
+          ogg = true
+          setGameKeyState(15, 255)
+          wait(100)
+          setGameKeyState(15, 0)
+        end
+      end
+    end
+  end
+
+  local changeofficegetgunhotkey = function()
+    sampShowDialog(
+        989,
+        "Изменение горячей клавиши активации getgun",
+        'Нажмите "Окей", после чего нажмите нужную клавишу.\nНастройки будут изменены.',
+        "Окей",
+        "Закрыть"
+    )
+    while sampIsDialogActive(989) do
+      wait(100)
+    end
+    local resultMain, buttonMain, typ = sampHasDialogRespond(989)
+    if buttonMain == 1 then
+      while ke1y == nil do
+        wait(100)
+        for i = 1, 200 do
+          if isKeyDown(i) then
+            settings.officegetgun.key = i
+            sampAddChatMessage("Установлена новая горячая клавиша - " .. key.id_to_name(i), -1)
+            addOneOffSound(0.0, 0.0, 0.0, 1052)
+            inicfg.save(settings, "edith")
+            ke1y = 1
+            break
+          end
+        end
+      end
+      ke1y = nil
+    end
+  end
+
+  local getMenu = function()
+    return {
+      title = "{7ef3fa}* " .. (settings.officegetgun.enable and "{00ff66}" or "{ff0000}") .. "OFFICEGETGUN",
+      submenu = {
+        {
+          title = "Информация о модуле",
+          onclick = function()
+            sampShowDialog(
+                0,
+                "{7ef3fa}/edith v." ..
+                    thisScript().version .. ' - информация о модуле {00ff66}"OFFICEGETGUN"',
+                "{00ff66}OFFICEGETGUN{ffffff}\n{ffffff}Тупа гетгун\n\nПо нажатию хоткея {00ccff}" ..
+                    tostring(key.id_to_name(settings.officegetgun.key)) ..
+                    "{ffffff} берется оружие в офисе.\nВ настройках можно изменить хоткей и вкл/выкл модуль",
+                "Окей"
+            )
+          end
+        },
+        {
+          title = "Вкл/выкл модуля: " .. tostring(settings.officegetgun.enable),
+          onclick = function()
+            settings.officegetgun.enable = not settings.officegetgun.enable
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "{AAAAAA}НАБОР ОРУЖИЯ"
+        },
+        {
+          title = "* SDPISTOL: " .. tostring(settings.officegetgun.sdpistol),
+          onclick = function()
+            sampShowDialog(
+                9827,
+                "Количество дигла.",
+                string.format("Введите количество дигла в наборе."),
+                "Выбрать",
+                "Закрыть",
+                1
+            )
+            sampSetCurrentDialogEditboxText(settings.officegetgun.sdpistol)
+            while sampIsDialogActive() do
+              wait(100)
+            end
+            local result, button, list, input = sampHasDialogRespond(9827)
+            if button == 1 then
+              if
+              tonumber(sampGetCurrentDialogEditboxText(9827)) ~= nil and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) >= 0 and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) < 10
+              then
+                settings.officegetgun.sdpistol = tonumber(sampGetCurrentDialogEditboxText(9827))
+              end
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "* DEAGLE: " .. tostring(settings.officegetgun.deagle),
+          onclick = function()
+            sampShowDialog(
+                9827,
+                "Количество дигла.",
+                string.format("Введите количество дигла в наборе."),
+                "Выбрать",
+                "Закрыть",
+                1
+            )
+            sampSetCurrentDialogEditboxText(settings.officegetgun.deagle)
+            while sampIsDialogActive() do
+              wait(100)
+            end
+            local result, button, list, input = sampHasDialogRespond(9827)
+            if button == 1 then
+              if
+              tonumber(sampGetCurrentDialogEditboxText(9827)) ~= nil and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) >= 0 and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) < 10
+              then
+                settings.officegetgun.deagle = tonumber(sampGetCurrentDialogEditboxText(9827))
+              end
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "* SHOTGUN: " .. tostring(settings.officegetgun.shotgun),
+          onclick = function()
+            sampShowDialog(
+                9827,
+                "Количество дигла.",
+                string.format("Введите количество дигла в наборе."),
+                "Выбрать",
+                "Закрыть",
+                1
+            )
+            sampSetCurrentDialogEditboxText(settings.officegetgun.shotgun)
+            while sampIsDialogActive() do
+              wait(100)
+            end
+            local result, button, list, input = sampHasDialogRespond(9827)
+            if button == 1 then
+              if
+              tonumber(sampGetCurrentDialogEditboxText(9827)) ~= nil and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) >= 0 and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) < 10
+              then
+                settings.officegetgun.shotgun = tonumber(sampGetCurrentDialogEditboxText(9827))
+              end
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "* SMG: " .. tostring(settings.officegetgun.smg),
+          onclick = function()
+            sampShowDialog(
+                9827,
+                "Количество дигла.",
+                string.format("Введите количество дигла в наборе."),
+                "Выбрать",
+                "Закрыть",
+                1
+            )
+            sampSetCurrentDialogEditboxText(settings.officegetgun.smg)
+            while sampIsDialogActive() do
+              wait(100)
+            end
+            local result, button, list, input = sampHasDialogRespond(9827)
+            if button == 1 then
+              if
+              tonumber(sampGetCurrentDialogEditboxText(9827)) ~= nil and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) >= 0 and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) < 10
+              then
+                settings.officegetgun.smg = tonumber(sampGetCurrentDialogEditboxText(9827))
+              end
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "* AK47: " .. tostring(settings.officegetgun.ak47),
+          onclick = function()
+            sampShowDialog(
+                9827,
+                "Количество дигла.",
+                string.format("Введите количество дигла в наборе."),
+                "Выбрать",
+                "Закрыть",
+                1
+            )
+            sampSetCurrentDialogEditboxText(settings.officegetgun.ak47)
+            while sampIsDialogActive() do
+              wait(100)
+            end
+            local result, button, list, input = sampHasDialogRespond(9827)
+            if button == 1 then
+              if
+              tonumber(sampGetCurrentDialogEditboxText(9827)) ~= nil and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) >= 0 and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) < 10
+              then
+                settings.officegetgun.ak47 = tonumber(sampGetCurrentDialogEditboxText(9827))
+              end
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "* M4A1: " .. tostring(settings.officegetgun.m4a1),
+          onclick = function()
+            sampShowDialog(
+                9827,
+                "Количество дигла.",
+                string.format("Введите количество дигла в наборе."),
+                "Выбрать",
+                "Закрыть",
+                1
+            )
+            sampSetCurrentDialogEditboxText(settings.officegetgun.m4a1)
+            while sampIsDialogActive() do
+              wait(100)
+            end
+            local result, button, list, input = sampHasDialogRespond(9827)
+            if button == 1 then
+              if
+              tonumber(sampGetCurrentDialogEditboxText(9827)) ~= nil and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) >= 0 and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) < 10
+              then
+                settings.officegetgun.m4a1 = tonumber(sampGetCurrentDialogEditboxText(9827))
+              end
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = "* RIFLE: " .. tostring(settings.officegetgun.rifle),
+          onclick = function()
+            sampShowDialog(
+                9827,
+                "Количество дигла.",
+                string.format("Введите количество дигла в наборе."),
+                "Выбрать",
+                "Закрыть",
+                1
+            )
+            sampSetCurrentDialogEditboxText(settings.officegetgun.rifle)
+            while sampIsDialogActive() do
+              wait(100)
+            end
+            local result, button, list, input = sampHasDialogRespond(9827)
+            if button == 1 then
+              if
+              tonumber(sampGetCurrentDialogEditboxText(9827)) ~= nil and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) >= 0 and
+                  tonumber(sampGetCurrentDialogEditboxText(987)) < 10
+              then
+                settings.officegetgun.rifle = tonumber(sampGetCurrentDialogEditboxText(9827))
+              end
+            end
+            inicfg.save(settings, "edith")
+          end
+        },
+        {
+          title = " "
+        },
+        {
+          title = "Изменить горячую клавишу",
+          onclick = function()
+            table.insert(tempThreads, lua_thread.create(changeofficegetgunhotkey))
+          end
+        }
+      }
+    }
+  end
+
+  local description = function()
+    return "{7ef3fa}* " ..
+        (settings.officegetgun.enable and "{00ff66}" or "{ff0000}") ..
+        "OFFICEGETGUN - {ffffff}МЕДЛЕННОЕ взятие набора оружия по нажатию кнопки {00ccff}" ..
+        tostring(key.id_to_name(settings.officegetgun.key)) .. ""
+  end
+
+  local enableAll = function()
+    settings.officegetgun.enable = true
+  end
+
+  local disableAll = function()
+    settings.officegetgun.enable = false
+  end
+
+  local defaults = {
+    enable = false,
+    key = 78,
+    sdpistol = 0,
+    deagle = 2,
+    shotgun = 0,
+    smg = 0,
+    ak47 = 0,
+    m4a1 = 0,
+    rifle = 1
+  }
+
+	local takeGun = function(id)
+		table.insert(
+			tempThreads,
+			lua_thread.create(
+				function(id)
+					local st = os.clock()
+					repeat
+						wait(300)
+						if os.clock() - st > 5 then
+							return
+						end
+					until os.clock() - st < 5 and sampIsDialogActive() and not sampIsChatInputActive() and
+						sampGetCurrentDialogId() == 1160
+					wait(300)
+					sampSetCurrentDialogListItem(id)
+					print(os.clock(), sampIsDialogActive(), "БЕРУ " .. tostring(id))
+					wait(300)
+					setVirtualKeyDown(VK_RETURN, true)
+					setVirtualKeyDown(VK_RETURN, false)
+
+					if
+						oggtable["sdpistol"] == 0 and oggtable["deagle"] == 0 and oggtable["shotgun"] == 0 and
+							oggtable["smg"] == 0 and
+							oggtable["ak47"] == 0 and
+							oggtable["m4a1"] == 0 and
+							oggtable["rifle"] == 0
+					 then
+						local st = os.clock()
+						repeat
+							wait(0)
+							print("work")
+							if os.clock() - st > 1 then
+								return
+							end
+						until os.clock() - st < 1 and sampIsDialogActive() and not sampIsChatInputActive() and
+							sampGetCurrentDialogId() == 1160
+						print("close")
+						wait(1000)
+						sampCloseCurrentDialogWithButton(0)
+					end
+				end,
+				id
+			)
+		)
+	end
+
+  local onShowDialog = function(dialog, style, title, button1, button2, text)
+    if dialog == 1160 and ogg then
+      print(os.clock(), "DIALOG")
+      if oggtable["sdpistol"] > 0 then
+        oggtable["sdpistol"] = oggtable["sdpistol"] - 1
+        takeGun(0)
+        print(os.clock(), "БЕРУ sdpistol")
+      elseif oggtable["deagle"] > 0 then
+        oggtable["deagle"] = oggtable["deagle"] - 1
+        takeGun(1)
+        print(os.clock(), "БЕРУ deagle")
+      elseif oggtable["shotgun"] > 0 then
+        oggtable["shotgun"] = oggtable["shotgun"] - 1
+        takeGun(2)
+        print(os.clock(), "БЕРУ shotgun")
+      elseif oggtable["smg"] > 0 then
+        oggtable["smg"] = oggtable["smg"] - 1
+        takeGun(3)
+        print(os.clock(), "БЕРУ smg")
+      elseif oggtable["ak47"] > 0 then
+        oggtable["ak47"] = oggtable["ak47"] - 1
+        takeGun(4)
+        print(os.clock(), "БЕРУ ak47")
+      elseif oggtable["m4a1"] > 0 then
+        oggtable["m4a1"] = oggtable["m4a1"] - 1
+        takeGun(5)
+        print(os.clock(), "БЕРУ m4a1")
+      elseif oggtable["rifle"] > 0 then
+        oggtable["rifle"] = oggtable["rifle"] - 1
+        print(os.clock(), "БЕРУ РИФЛУ")
+        takeGun(6)
+      end
+    end
+  end
+
+  return {
+    main = mainThread,
+    getMenu = getMenu,
+    desc = description,
+    enable = enableAll,
+    disable = disableAll,
+    defaults = defaults,
+    onShowDialog = onShowDialog
+  }
+end
+--------------------------------------------------------------------------------
 ------------------------------------TEMPLATE------------------------------------
 --------------------------------------------------------------------------------
 --[[function xxxModule()
@@ -10981,7 +11409,13 @@ function onShowDialog(dialog, style, title, button1, button2, text)
   if res then
     return table.unpack(res)
   end
+
+  local res = processEvent(officegetgun.onShowDialog, table.pack(dialog, style, title, button1, button2, text))
+  if res then
+    return table.unpack(res)
+  end
 end
+
 function onCreateGangZone(zoneId, squareStart, squareEnd, color)
   local res = processEvent(gzcheck.onCreateGangZone, table.pack(zoneId, squareStart, squareEnd, color))
   if res then
